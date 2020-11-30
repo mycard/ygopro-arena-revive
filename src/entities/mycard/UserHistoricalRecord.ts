@@ -1,9 +1,9 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 @Index('user_historical_record_pk', ['season', 'username'], { unique: true })
 @Entity('user_historical_record', { schema: 'public' })
 export class UserHistoricalRecord {
-  @Column('character varying', { primary: true, name: 'username' })
+  @PrimaryColumn('character varying', { primary: true, name: 'username' })
   username: string;
 
   @Column('character varying', { primary: true, name: 'season' })

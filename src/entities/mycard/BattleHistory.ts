@@ -1,14 +1,14 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 @Index('battle_history_end_time_index', ['endTime'], {})
 @Index('battle_history_usernamea_index', ['usernamea'], {})
 @Index('battle_history_usernameb_index', ['usernameb'], {})
 @Entity('battle_history', { schema: 'public' })
 export class BattleHistory {
-  @Column('character varying', { name: 'usernamea', length: 100 })
+  @PrimaryColumn('character varying', { name: 'usernamea', length: 100 })
   usernamea: string;
 
-  @Column('character varying', { name: 'usernameb', length: 100 })
+  @PrimaryColumn('character varying', { name: 'usernameb', length: 100 })
   usernameb: string;
 
   @Column('integer', { name: 'userscorea', default: 0 })
@@ -87,7 +87,9 @@ export class BattleHistory {
   @Column('timestamp without time zone', { name: 'start_time', nullable: true })
   startTime: Date;
 
-  @Column('timestamp without time zone', { name: 'end_time', nullable: true })
+  @PrimaryColumn('timestamp without time zone', {
+    name: 'end_time',
+  })
   endTime: Date;
 
   @Column('text', { name: 'winner', nullable: true })

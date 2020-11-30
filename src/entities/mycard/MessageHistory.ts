@@ -1,14 +1,17 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity('message_history', { schema: 'public' })
 export class MessageHistory {
-  @Column('timestamp without time zone', { name: 'time', nullable: true })
+  @Column('timestamp without time zone', {
+    name: 'time',
+    nullable: true,
+  })
   time: Date;
 
-  @Column('character varying', { name: 'sender', nullable: true })
+  @PrimaryColumn('character varying', { name: 'sender' })
   sender: string;
 
-  @Column('character varying', { name: 'content', nullable: true })
+  @PrimaryColumn('character varying', { name: 'content' })
   content: string;
 
   @Column('integer', { name: 'level', nullable: true })

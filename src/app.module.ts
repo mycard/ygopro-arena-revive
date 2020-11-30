@@ -13,9 +13,6 @@ import { Count } from './entities/mycard/Count';
 import { DeckInfo } from './entities/mycard/DeckInfo';
 import { BhAccount } from './entities/mycard/BhAccount';
 import { RatingIndex } from './entities/mycard/RatingIndex';
-import { Userinfo201812backup } from './entities/mycard/Userinfo201812backup';
-import { Userinfo201902backup } from './entities/mycard/Userinfo201902backup';
-import { Userinfo15backup } from './entities/mycard/Userinfo15backup';
 import { Counter } from './entities/mycard/Counter';
 import { UserBanHistory } from './entities/mycard/UserBanHistory';
 import { DeckDemo } from './entities/mycard/DeckDemo';
@@ -35,7 +32,6 @@ import { Deck } from './entities/mycard/Deck';
 import { PlayerCards } from './entities/mycard/PlayerCards';
 import { SiteConfig } from './entities/mycard/SiteConfig';
 import { SingleHalfmonth } from './entities/mycard/SingleHalfmonth';
-import { Userinfo201901backup } from './entities/mycard/Userinfo201901backup';
 import { VoteResult } from './entities/mycard/VoteResult';
 import { BattleHistory } from './entities/mycard/BattleHistory';
 import { MessageHistory } from './entities/mycard/MessageHistory';
@@ -44,7 +40,6 @@ import { SingleWeek } from './entities/mycard/SingleWeek';
 import { Single } from './entities/mycard/Single';
 import { TagMonth } from './entities/mycard/TagMonth';
 import { DeckDay } from './entities/mycard/DeckDay';
-import { RatingIndexBackup } from './entities/mycard/RatingIndexBackup';
 import { TagSeason } from './entities/mycard/TagSeason';
 import { Tag } from './entities/mycard/Tag';
 import { DeckSeason } from './entities/mycard/DeckSeason';
@@ -72,7 +67,6 @@ const mycardEntities = [
   MessageHistory,
   PlayerCards,
   PlayerStatus,
-  RatingIndexBackup,
   RatingIndex,
   SafeAk,
   SingleDay,
@@ -91,10 +85,6 @@ const mycardEntities = [
   UnknownDecks,
   UserBanHistory,
   UserHistoricalRecord,
-  Userinfo15backup,
-  Userinfo201812backup,
-  Userinfo201901backup,
-  Userinfo201902backup,
   UserInfo,
   VoteResult,
   Votes,

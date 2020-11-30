@@ -2,8 +2,8 @@ import { Column, Entity } from 'typeorm';
 
 @Entity('texts')
 export class YGOProDatabaseTexts {
-  @Column('integer', { primary: true, name: 'id', nullable: true })
-  id: number | null;
+  @Column('integer', { primary: true, name: 'id' })
+  id: number;
 
   @Column('text', { name: 'name', nullable: true })
   name: string | null;

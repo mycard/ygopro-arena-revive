@@ -2,7 +2,7 @@ import { Column, Entity } from 'typeorm';
 
 @Entity('datas')
 export class YGOProDatabaseDatas {
-  @Column('integer', { primary: true, name: 'id', nullable: true })
+  @Column('integer', { primary: true, name: 'id' })
   id: number | null;
 
   @Column('integer', { name: 'ot', nullable: true })

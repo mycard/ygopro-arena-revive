@@ -1,4 +1,4 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity('user_ban_history', { schema: 'public' })
 export class UserBanHistory {
@@ -14,7 +14,7 @@ export class UserBanHistory {
   @Column('timestamp without time zone', { name: 'from', nullable: true })
   from: Date;
 
-  @Column('integer', { name: 'id', nullable: true })
+  @PrimaryColumn('integer', { name: 'id' })
   id: number;
 
   @Column('character varying', { name: 'reason', nullable: true })

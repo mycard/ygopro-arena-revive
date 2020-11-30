@@ -118,3 +118,18 @@ export const CardInfo = {
     '1074': 'Pendulum',
   },
 };
+
+export function getStringValueByMysticalNumber(
+  lang: string,
+  offset: number,
+  num: number,
+) {
+  for (let i = 0; i < 32; i++) {
+    if (num & (1 << i)) {
+      const index = offset + i;
+      const key = index.toString();
+      return CardInfo[lang][key];
+    }
+  }
+  return '';
+}
