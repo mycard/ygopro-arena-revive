@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection, InjectEntityManager } from '@nestjs/typeorm';
-import { Connection, EntityManager } from 'typeorm';
+import { Connection, EntityManager, LessThan, MoreThanOrEqual } from 'typeorm';
 import bunyan, { createLogger } from 'bunyan';
 import { UserInfo } from './entities/mycard/UserInfo';
 import * as Filter from 'bad-words-chinese';
@@ -267,20 +267,22 @@ export class AppService {
           .andWhere('start_time >= :fromTime', { fromTime })
           .andWhere('start_time < :toTime', { toTime })
           .getRawOne(),
-        this.mcdb
-          .getRepository(BattleHistory)
-          .createQueryBuilder('battleHistory')
-          .where('type = :type', { type: 'entertain' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
-          .getMany(),
-        this.mcdb
-          .getRepository(BattleHistory)
-          .createQueryBuilder('battleHistory')
-          .where('type = :type', { type: 'athletic' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
-          .getMany(),
+        this.mcdb.getRepository(BattleHistory).find({
+          select: ['startTime'],
+          where: {
+            type: 'entertain',
+            startTime: MoreThanOrEqual(fromTime),
+            endTime: LessThan(toTime),
+          },
+        }),
+        this.mcdb.getRepository(BattleHistory).find({
+          select: ['startTime'],
+          where: {
+            type: 'athletic',
+            startTime: MoreThanOrEqual(fromTime),
+            endTime: LessThan(toTime),
+          },
+        }),
       ]);
 
       let dateHour = '';
@@ -326,7 +328,7 @@ export class AppService {
         }
       });
       const totalDays = moment(toTime).diff(fromTime, 'days');
-      
+
       //饼图
       const legendDataAthletic = [];
       const seriesDataAthletic = [];
@@ -335,7 +337,7 @@ export class AppService {
         seriesDataAthletic.push({
           name: i,
           avg: ((hourlyAvgMapAthletic[i] || 0) / totalDays).toFixed(2),
-          value: hourlyAvgMapAthletic[i] || 0
+          value: hourlyAvgMapAthletic[i] || 0,
         });
       }
 
@@ -346,7 +348,7 @@ export class AppService {
         seriesDataEntertain.push({
           name: i,
           avg: ((hourlyAvgMapEntertain[i] || 0) / totalDays).toFixed(2),
-          value: hourlyAvgMapEntertain[i] || 0
+          value: hourlyAvgMapEntertain[i] || 0,
         });
       }
 
@@ -354,12 +356,12 @@ export class AppService {
         entertain: {
           total: entertainTotal,
           disconnect: entertainDisconnect,
-          users: entertainUsers
+          users: entertainUsers,
         },
         athletic: {
           total: athleticTotal,
           disconnect: athleticDisconnect,
-          users: athleticUsers
+          users: athleticUsers,
         },
         totalActive: totalActive,
         hourlyDataMap: hourlyDataMap,
