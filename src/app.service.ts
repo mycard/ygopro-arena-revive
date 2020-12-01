@@ -8,6 +8,9 @@ import { ChineseDirtyWords } from './dirtyWordsChinese';
 import { YGOProDatabaseDatas } from './entities/ygodb/YGOProDatabaseDatas';
 import { YGOProDatabaseTexts } from './entities/ygodb/YGOProDatabaseTexts';
 import { getStringValueByMysticalNumber } from './CardInfo';
+import * as moment from 'moment';
+import { BattleHistory } from './entities/mycard/BattleHistory';
+import _ from 'underscore';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -183,6 +186,193 @@ export class AppService {
       return result;
     } catch (e) {
       this.log.warn(`Failed fetching card with id ${id}: ${e.toString()}`);
+      return null;
+    }
+  }
+
+  async getReport(inputFromTime: string, inputToTime: string) {
+    const fromTime = (inputFromTime ? moment(inputFromTime) : moment()).format(
+      'YYYY-MM-DD',
+    );
+    const toTime = (inputToTime
+      ? moment(inputToTime)
+      : moment().add(1, 'day')
+    ).format('YYYY-MM-DD');
+    try {
+      const [
+        { entertainTotal },
+        { entertainDisconnect },
+        { entertainUsers },
+        { athleticTotal },
+        { athleticDisconnect },
+        { athleticUsers },
+        { totalActive },
+        hourlyEntertain,
+        hourlyAthletic,
+      ] = await Promise.all([
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(*)', 'entertainTotal')
+          .from(BattleHistory, 'battleHistory')
+          .where('type = :type', { type: 'entertain' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getRawOne(),
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(*)', 'entertainDisconnect')
+          .from(BattleHistory, 'battleHistory')
+          .where('type = :type', { type: 'entertain' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('(userscorea < 0 or userscoreb < 0)')
+          .getRawOne(),
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(DISTINCT usernamea)', 'entertainUsers')
+          .from(BattleHistory, 'battleHistory')
+          .where('type = :type', { type: 'entertain' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getRawOne(),
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(*)', 'athleticTotal')
+          .from(BattleHistory, 'battleHistory')
+          .where('type = :type', { type: 'athletic' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getRawOne(),
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(*)', 'athleticDisconnect')
+          .from(BattleHistory, 'battleHistory')
+          .where('type = :type', { type: 'athletic' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('(userscorea < 0 or userscoreb < 0)')
+          .getRawOne(),
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(DISTINCT usernamea)', 'athleticUsers')
+          .from(BattleHistory, 'battleHistory')
+          .where('type = :type', { type: 'athletic' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getRawOne(),
+        this.mcdb.manager
+          .createQueryBuilder()
+          .select('count(DISTINCT usernamea)', 'totalActive')
+          .from(BattleHistory, 'battleHistory')
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getRawOne(),
+        this.mcdb
+          .getRepository(BattleHistory)
+          .createQueryBuilder('battleHistory')
+          .where('type = :type', { type: 'entertain' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getMany(),
+        this.mcdb
+          .getRepository(BattleHistory)
+          .createQueryBuilder('battleHistory')
+          .where('type = :type', { type: 'athletic' })
+          .andWhere('start_time >= :fromTime', { fromTime })
+          .andWhere('start_time < :toTime', { toTime })
+          .getMany(),
+      ]);
+
+      let dateHour = '';
+      let h = '';
+      const hourlyDataMap = {
+        athletic: {},
+        entertain: {},
+      };
+      const hourlyAvgMapAthletic = {};
+      const hourlyAvgMapEntertain = {};
+      let totalAthletic = 0;
+      let totalEntertain = 0;
+      _.forEach(hourlyAthletic, function (row) {
+        totalAthletic++;
+        dateHour = moment(row.startTime).format('YYYY-MM-DD HH');
+        h = moment(row.endTime).format('H');
+        if (hourlyDataMap['athletic'][dateHour]) {
+          hourlyDataMap['athletic'][dateHour]++;
+        } else {
+          hourlyDataMap['athletic'][dateHour] = 1;
+        }
+
+        if (hourlyAvgMapAthletic[h]) {
+          hourlyAvgMapAthletic[h]++;
+        } else {
+          hourlyAvgMapAthletic[h] = 1;
+        }
+      });
+      _.forEach(hourlyEntertain, function (row) {
+        totalEntertain++;
+        dateHour = moment(row.startTime).format('YYYY-MM-DD HH');
+        h = moment(row.endTime).format('H');
+        if (hourlyDataMap['entertain'][dateHour]) {
+          hourlyDataMap['entertain'][dateHour]++;
+        } else {
+          hourlyDataMap['entertain'][dateHour] = 1;
+        }
+
+        if (hourlyAvgMapEntertain[h]) {
+          hourlyAvgMapEntertain[h]++;
+        } else {
+          hourlyAvgMapEntertain[h] = 1;
+        }
+      });
+      const totalDays = moment(toTime).diff(fromTime, 'days');
+      
+      //饼图
+      const legendDataAthletic = [];
+      const seriesDataAthletic = [];
+      for (let i = 0; i < 24; i++) {
+        legendDataAthletic.push(i);
+        seriesDataAthletic.push({
+          name: i,
+          avg: ((hourlyAvgMapAthletic[i] || 0) / totalDays).toFixed(2),
+          value: hourlyAvgMapAthletic[i] || 0
+        });
+      }
+
+      const legendDataEntertain = [];
+      const seriesDataEntertain = [];
+      for (let i = 0; i < 24; i++) {
+        legendDataEntertain.push(i);
+        seriesDataEntertain.push({
+          name: i,
+          avg: ((hourlyAvgMapEntertain[i] || 0) / totalDays).toFixed(2),
+          value: hourlyAvgMapEntertain[i] || 0
+        });
+      }
+
+      return {
+        entertain: {
+          total: entertainTotal,
+          disconnect: entertainDisconnect,
+          users: entertainUsers
+        },
+        athletic: {
+          total: athleticTotal,
+          disconnect: athleticDisconnect,
+          users: athleticUsers
+        },
+        totalActive: totalActive,
+        hourlyDataMap: hourlyDataMap,
+        totalDays: totalDays,
+        totalEntertain: totalEntertain,
+        totalAthletic: totalAthletic,
+        legendDataAthletic: legendDataAthletic,
+        seriesDataAthletic: seriesDataAthletic,
+        legendDataEntertain: legendDataEntertain,
+        seriesDataEntertain: seriesDataEntertain,
+      };
+    } catch (e) {
+      this.log.warn(`Failed to query report: ${e.toString()}`);
       return null;
     }
   }
