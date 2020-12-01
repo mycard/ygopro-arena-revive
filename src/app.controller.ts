@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import {Body, Controller, Get, Post, Query, Res} from '@nestjs/common';
 import express from 'express';
 import { AppService } from './app.service';
 import { UserInfo } from './entities/mycard/UserInfo';
@@ -37,5 +37,10 @@ export class AppController {
     @Query('to_date') toDate: string,
   ) {
     return await this.appService.getReport(fromDate, toDate);
+  }
+
+  @Post('activity')
+  async updateActivity(@Body() body: any) {
+    return await this.updateActivity(body);
   }
 }

@@ -11,6 +11,7 @@ import { getStringValueByMysticalNumber } from './CardInfo';
 import * as moment from 'moment';
 import { BattleHistory } from './entities/mycard/BattleHistory';
 import _ from 'underscore';
+import { SiteConfig } from './entities/mycard/SiteConfig';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -376,6 +377,34 @@ export class AppService {
     } catch (e) {
       this.log.warn(`Failed to query report: ${e.toString()}`);
       return null;
+    }
+  }
+  private async getSiteConfig(configKey: string) {
+    const configObject = await this.mcdb
+      .getRepository(SiteConfig)
+      .findOneOrFail({
+        select: ['configValue'],
+        where: [configKey],
+      });
+    return configObject.configValue;
+  }
+  private async updateSiteConfig(configKey: string, configValue: string) {
+    await this.mcdb
+      .getRepository(SiteConfig)
+      .update({ configKey }, { configValue });
+  }
+
+  async updateActivity(body: any) {
+    const { start, end, max, name } = body;
+    const activityStr = JSON.stringify({ start, end, max, name });
+    try {
+      await this.updateSiteConfig('activity', activityStr);
+      return { code: 200 };
+    } catch (e) {
+      this.log.warn(
+        `Failed to update activity to ${activityStr}: ${e.toString()}`,
+      );
+      return { code: 500 };
     }
   }
 }
