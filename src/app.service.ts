@@ -12,6 +12,7 @@ import * as moment from 'moment';
 import { BattleHistory } from './entities/mycard/BattleHistory';
 import _ from 'underscore';
 import { SiteConfig } from './entities/mycard/SiteConfig';
+import { AppLogger } from './app.logger';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -59,7 +60,6 @@ const ygoproConstants = {
 
 @Injectable()
 export class AppService {
-  log: bunyan;
   chineseDirtyFilter: Filter;
   constructor(
     @InjectConnection('ygoproChinese')
@@ -68,8 +68,9 @@ export class AppService {
     private endb: Connection,
     @InjectConnection('mycard')
     private mcdb: Connection,
+    private log: AppLogger,
   ) {
-    this.log = createLogger({ name: 'ygopro-arena-revive' });
+    this.log.setContext('ygopro-arena-revive');
     this.chineseDirtyFilter = new Filter({
       chineseList: ChineseDirtyWords,
     });

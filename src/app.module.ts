@@ -45,6 +45,7 @@ import { Tag } from './entities/mycard/Tag';
 import { DeckSeason } from './entities/mycard/DeckSeason';
 import { DeckWeek } from './entities/mycard/DeckWeek';
 import { UserInfo } from './entities/mycard/UserInfo';
+import { AppLogger } from './app.logger';
 
 const ygoproEntities = [YGOProDatabaseDatas, YGOProDatabaseTexts];
 const mycardEntities = [
@@ -119,6 +120,6 @@ const mycardEntities = [
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AppLogger],
 })
 export class AppModule {}
