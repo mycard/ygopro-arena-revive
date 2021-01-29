@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection, InjectEntityManager } from '@nestjs/typeorm';
 import { Connection, EntityManager, LessThan, MoreThanOrEqual } from 'typeorm';
-import bunyan, { createLogger } from 'bunyan';
 import { UserInfo } from './entities/mycard/UserInfo';
-import * as Filter from 'bad-words-chinese';
+import Filter from 'bad-words-chinese';
 import { ChineseDirtyWords } from './dirtyWordsChinese';
 import { YGOProDatabaseDatas } from './entities/ygodb/YGOProDatabaseDatas';
 import { YGOProDatabaseTexts } from './entities/ygodb/YGOProDatabaseTexts';
 import { getStringValueByMysticalNumber } from './CardInfo';
-import * as moment from 'moment';
+import moment from 'moment';
 import { BattleHistory } from './entities/mycard/BattleHistory';
 import _ from 'underscore';
 import { SiteConfig } from './entities/mycard/SiteConfig';
