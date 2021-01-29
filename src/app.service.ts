@@ -12,6 +12,10 @@ import { BattleHistory } from './entities/mycard/BattleHistory';
 import _ from 'underscore';
 import { SiteConfig } from './entities/mycard/SiteConfig';
 import { AppLogger } from './app.logger';
+import axios from 'axios';
+import { config } from './config';
+import qs from 'qs';
+import { EloUtility } from './EloUtility';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -56,6 +60,17 @@ const ygoproConstants = {
     LINK_MARKER_TOP_RIGHT: 256,
   },
 };
+
+interface PlayerDiff {
+  athletic_win: number;
+  athletic_lose: number;
+  athletic_draw: number;
+  athletic_all: number;
+  entertain_win: number;
+  entertain_lose: number;
+  entertain_draw: number;
+  entertain_all: number;
+}
 
 @Injectable()
 export class AppService {
@@ -406,5 +421,383 @@ export class AppService {
       );
       return { code: 500 };
     }
+  }
+
+  private async findOrCreateUser(username: string) {
+    const repo = this.mcdb.getRepository(UserInfo);
+    let user = await repo.findOne({
+      username,
+    });
+    if (!user) {
+      user = new UserInfo();
+      user.username = username;
+      user = await repo.save(user);
+    }
+    return user;
+  }
+
+  private async checkDeckType(deck: string) {
+    if (!deck) {
+      return 'no deck';
+    }
+    try {
+      const { data } = await axios.post(
+        config.deckIdentifierPath,
+        qs.stringify({ deck }),
+        {
+          responseType: 'json',
+        },
+      );
+      const deckType = data.deck as string;
+      return deckType;
+    } catch (e) {
+      this.log.warn(`Query deck failed for ${deck}: ${e.toString()}`);
+      return 'deck fail';
+    }
+  }
+
+  async postScore(body: any): Promise<string> {
+    let usernameA: string = body.usernameA;
+    let usernameB: string = body.usernameB;
+    const userscoreA = parseInt(body.userscoreA) || 0;
+    const userscoreB = parseInt(body.userscoreB) || 0;
+    const start: string = body.start;
+    const end: string = body.end;
+    const arena: string = body.arena || 'entertain';
+    if (userscoreA == -5 && userscoreB == -5) {
+      return null;
+    }
+    if (!usernameA || !usernameB) {
+      return 'username can not be null';
+    }
+    usernameA = usernameA.replace(/'/g, '');
+    usernameB = usernameB.replace(/'/g, '');
+
+    const [userA, userB, deckA, deckB] = await Promise.all([
+      this.findOrCreateUser(usernameA),
+      this.findOrCreateUser(usernameB),
+      this.checkDeckType(body.userdeckA),
+      this.checkDeckType(body.userdeckB),
+    ]);
+
+    const paramA: PlayerDiff = {
+      athletic_win: 0,
+      athletic_lose: 0,
+      athletic_draw: 0,
+      athletic_all: 1,
+      entertain_win: 0,
+      entertain_lose: 0,
+      entertain_draw: 0,
+      entertain_all: 1,
+    };
+
+    const paramB: PlayerDiff = {
+      athletic_win: 0,
+      athletic_lose: 0,
+      athletic_draw: 0,
+      athletic_all: 1,
+      entertain_win: 0,
+      entertain_lose: 0,
+      entertain_draw: 0,
+      entertain_all: 1,
+    };
+    let winner = 'none';
+    let firstWin = false;
+
+    // athletic = 竞技  entertain = 娱乐
+    const repo = this.mcdb.getRepository(BattleHistory);
+    if (arena === 'athletic') {
+      // select count(*) from battle_history where (usernameA = '爱吉' OR usernameB = '爱吉') and start_time > date '2017-02-09'
+      // 日首胜  每日0点开始计算  日首胜的话是额外增加固定4DP
+
+      const today = moment(moment(start).format('YYYY-MM-DD')).toDate();
+
+      // 真实得分 S（胜=1分，和=0.5分，负=0分）
+      let sa = 0,
+        sb = 0;
+      paramA['athletic_all'] = 1;
+      paramB['athletic_all'] = 1;
+      if (userscoreA > userscoreB || userscoreB === -9) {
+        sa = 1;
+        paramA['athletic_win'] = 1;
+        paramB['athletic_lose'] = 1;
+        winner = usernameA;
+      } else if (userscoreA < userscoreB || userscoreA === -9) {
+        sb = 1;
+        paramA['athletic_lose'] = 1;
+        paramB['athletic_win'] = 1;
+        winner = usernameB;
+      } else {
+        sa = 0.5;
+        sb = 0.5;
+        paramA['athletic_draw'] = 1;
+        paramB['athletic_draw'] = 1;
+      }
+
+      // 检查首胜
+      if (winner !== 'none') {
+        const tryFirstWin = await repo
+          .createQueryBuilder('battleHistory')
+          .where(
+            "type ='athletic' and userscorea != -5 and userscoreb != -5 and ( (usernameA= :winner AND userscorea > userscoreb ) OR (usernameB= :winner AND userscoreb > userscorea) ) and start_time > :today",
+            { winner, today },
+          )
+          .getOne();
+        if (!tryFirstWin) {
+          firstWin = true;
+        }
+        console.log(tryFirstWin);
+      }
+
+      const ptResult = EloUtility.getEloScore(userA.pt, userB.pt, sa, sb);
+      const expResult = EloUtility.getExpScore(
+        userA.exp,
+        userB.exp,
+        userscoreA,
+        userscoreB,
+      );
+
+      // 处理开局退房的情况
+      let pre_exit = false;
+      if (userscoreA === -5 || userscoreB === -5) {
+        pre_exit = true;
+        firstWin = false;
+        ptResult.ptA = userA.pt;
+        ptResult.ptB = userB.pt;
+        if (userscoreA === -9) {
+          ptResult.ptA = userA.pt - 2;
+          this.log.compatLog(
+            usernameA,
+            '开局退房',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        } else if (userscoreB === -9) {
+          ptResult.ptB = userB.pt - 2;
+          this.log.compatLog(
+            usernameB,
+            '开局退房',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+      }
+
+      //新增记分规则，双方DP差距超过137的话，
+      //按加减8或16处理：高分赢低分 高分加8低分减8，低分赢高分，低分加16，高分减16.
+      if (!pre_exit && userA.pt - userB.pt > 137) {
+        if (winner === usernameA) {
+          ptResult.ptA = userA.pt + 8;
+          ptResult.ptB = userB.pt - 8;
+          this.log.compatLog(
+            userA.pt,
+            userB.pt,
+            '当局分差过大,高分赢低分',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+
+        if (winner === usernameB) {
+          ptResult.ptA = userA.pt - 15;
+          ptResult.ptB = userB.pt + 16;
+          this.log.compatLog(
+            userA.pt,
+            userB.pt,
+            '当局分差过大,低分赢高分',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+      }
+
+      if (!pre_exit && userB.pt - userA.pt > 137) {
+        if (winner === usernameA) {
+          ptResult.ptA = userA.pt + 16;
+          ptResult.ptB = userB.pt - 15;
+          this.log.compatLog(
+            userA.pt,
+            userB.pt,
+            '当局分差过大,低分赢高分',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+
+        if (winner === usernameB) {
+          ptResult.ptA = userA.pt - 8;
+          ptResult.ptB = userB.pt + 8;
+          this.log.compatLog(
+            userA.pt,
+            userB.pt,
+            '当局分差过大,高分赢低分',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+      }
+
+      // 3分钟以内结束的决斗，胜者不加DP，负者照常扣DP。 平局不扣DP不加DP   : 把开始时间+3分钟，如果加完比结束时间靠后，说明比赛时间不足三分钟
+      const isLess3Min = moment(start).add(1, 'm').isAfter(moment(end));
+      if (!pre_exit && isLess3Min) {
+        if (winner === usernameA) {
+          ptResult.ptA = userA.pt;
+          this.log.compatLog(
+            usernameA,
+            '当局有人存在早退，胜利不加分',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+        if (winner === usernameB) {
+          ptResult.ptB = userB.pt;
+          this.log.compatLog(
+            usernameB,
+            '当局有人存在早退，胜利不加分',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+      }
+
+      // 2018.4.23 0秒的决斗，双方都不扣分 -- 星光
+      // let sametime = start == end
+      // if (sametime) {
+      //     ptResult.ptA = userA.pt;
+      //     ptResult.ptB = userB.pt;
+      //     this.log.compatLog(usernameA, usernameB, '当局有人决斗时间一样 0s 双方不加分不扣分。', moment(start).format('YYYY-MM-DD HH:mm'))
+      // }
+
+      if (firstWin) {
+        if (winner === usernameA) {
+          ptResult.ptA += 5;
+          this.log.compatLog(
+            usernameA,
+            '首胜多加5DP',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+        if (winner === usernameB) {
+          ptResult.ptB += 5;
+          this.log.compatLog(
+            usernameB,
+            '首胜多加5DP',
+            moment(start).format('YYYY-MM-DD HH:mm'),
+          );
+        }
+      }
+
+      const battleHistory = new BattleHistory();
+      battleHistory.usernamea = userA.username;
+      battleHistory.usernameb = userB.username;
+      battleHistory.userscorea = userscoreA;
+      battleHistory.userscoreb = userscoreB;
+      battleHistory.expa = expResult.expA;
+      battleHistory.expb = expResult.expB;
+      battleHistory.expaEx = userA.exp;
+      battleHistory.expbEx = userB.exp;
+      battleHistory.pta = ptResult.ptA;
+      battleHistory.ptb = ptResult.ptB;
+      battleHistory.ptaEx = userA.pt;
+      battleHistory.ptbEx = userB.pt;
+      battleHistory.type = arena;
+      battleHistory.startTime = moment(start).toDate();
+      battleHistory.endTime = moment(end).toDate();
+      battleHistory.winner = winner;
+      battleHistory.isfirstwin = firstWin;
+      battleHistory.decka = deckA;
+      battleHistory.deckb = deckB;
+      await Promise.all([
+        repo.save(battleHistory),
+        this.mcdb
+          .createQueryBuilder()
+          .update(UserInfo)
+          .set({
+            exp: expResult.expA,
+            pt: ptResult.ptA,
+            athleticWin: () => `athletic_win + ${paramA.athletic_win}`,
+            athleticLose: () => `athletic_lose + ${paramA.athletic_win}`,
+            athleticDraw: () => `athletic_draw + ${paramA.athletic_win}`,
+            athleticAll: () => `athletic_all + ${paramA.athletic_win}`,
+          })
+          .where('username = :username', { username: userA.username })
+          .execute(),
+        this.mcdb
+          .createQueryBuilder()
+          .update(UserInfo)
+          .set({
+            exp: expResult.expB,
+            pt: ptResult.ptB,
+            athleticWin: () => `athletic_win + ${paramB.athletic_win}`,
+            athleticLose: () => `athletic_lose + ${paramB.athletic_win}`,
+            athleticDraw: () => `athletic_draw + ${paramB.athletic_win}`,
+            athleticAll: () => `athletic_all + ${paramB.athletic_win}`,
+          })
+          .where('username = :username', { username: userB.username })
+          .execute(),
+      ]);
+    } else {
+      const expResult = EloUtility.getExpScore(
+        userA.exp,
+        userB.exp,
+        userscoreA,
+        userscoreB,
+      );
+      if (userscoreA > userscoreB) {
+        paramA['entertain_win'] = 1;
+        paramB['entertain_lose'] = 1;
+        winner = usernameA;
+      }
+      if (userscoreA < userscoreB) {
+        paramA['entertain_lose'] = 1;
+        paramB['entertain_win'] = 1;
+        winner = usernameB;
+      }
+      if (userscoreA === userscoreB) {
+        paramA['entertain_draw'] = 1;
+        paramB['entertain_draw'] = 1;
+      }
+      const battleHistory = new BattleHistory();
+      battleHistory.usernamea = userA.username;
+      battleHistory.usernameb = userB.username;
+      battleHistory.userscorea = userscoreA;
+      battleHistory.userscoreb = userscoreB;
+      battleHistory.expa = expResult.expA;
+      battleHistory.expb = expResult.expB;
+      battleHistory.expaEx = userA.exp;
+      battleHistory.expbEx = userB.exp;
+      battleHistory.pta = userA.pt;
+      battleHistory.ptb = userA.pt;
+      battleHistory.ptaEx = userA.pt;
+      battleHistory.ptbEx = userB.pt;
+      battleHistory.type = arena;
+      battleHistory.startTime = moment(start).toDate();
+      battleHistory.endTime = moment(end).toDate();
+      battleHistory.winner = winner;
+      battleHistory.isfirstwin = firstWin;
+      battleHistory.decka = deckA;
+      battleHistory.deckb = deckB;
+      await Promise.all([
+        repo.save(battleHistory),
+        this.mcdb
+          .createQueryBuilder()
+          .update(UserInfo)
+          .set({
+            exp: expResult.expA,
+            athleticWin: () => `athletic_win + ${paramA.athletic_win}`,
+            athleticLose: () => `athletic_lose + ${paramA.athletic_win}`,
+            athleticDraw: () => `athletic_draw + ${paramA.athletic_win}`,
+            athleticAll: () => `athletic_all + ${paramA.athletic_win}`,
+          })
+          .where('username = :username', { username: userA.username })
+          .execute(),
+        this.mcdb
+          .createQueryBuilder()
+          .update(UserInfo)
+          .set({
+            exp: expResult.expB,
+            athleticWin: () => `athletic_win + ${paramB.athletic_win}`,
+            athleticLose: () => `athletic_lose + ${paramB.athletic_win}`,
+            athleticDraw: () => `athletic_draw + ${paramB.athletic_win}`,
+            athleticAll: () => `athletic_all + ${paramB.athletic_win}`,
+          })
+          .where('username = :username', { username: userB.username })
+          .execute(),
+      ]);
+    }
+
+    return null;
   }
 }

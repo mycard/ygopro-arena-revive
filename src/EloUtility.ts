@@ -1,4 +1,4 @@
-class Utils {
+export class EloUtility {
   static getExpScore(
     expA: number,
     expB: number,

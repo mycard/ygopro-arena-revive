@@ -1,11 +1,35 @@
-import {Body, Controller, Get, Post, Query, Res} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import express from 'express';
 import { AppService } from './app.service';
 import { UserInfo } from './entities/mycard/UserInfo';
+import { config } from './config';
 
 @Controller('api')
 export class AppController {
   constructor(private readonly appService: AppService) {}
+
+  @Post('score')
+  async postScore(
+    @Body() body: any,
+    @Body('accesskey') accessKey,
+    @Res() res: express.Response,
+  ) {
+    if (accessKey !== config.accessKey) {
+      return res.status(403).json({
+        msg: 'accesskey error',
+      });
+    }
+    const message = await this.appService.postScore(body);
+    if (message) {
+      res.status(404).json({
+        msg: message,
+      });
+    } else {
+      res.json({
+        msg: 'success',
+      });
+    }
+  }
 
   @Get('users')
   async getUsers(@Query('o') orderByWhat: string) {
@@ -41,6 +65,6 @@ export class AppController {
 
   @Post('activity')
   async updateActivity(@Body() body: any) {
-    return await this.updateActivity(body);
+    return await this.appService.updateActivity(body);
   }
 }
