@@ -67,4 +67,22 @@ export class AppController {
   async updateActivity(@Body() body: any) {
     return await this.appService.updateActivity(body);
   }
+
+  @Post('votes')
+  async updateVotes(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.updateVotes(body);
+    res.status(code).json({ code });
+  }
+
+  @Post('voteStatus')
+  async updateVoteStatus(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.updateVoteStatus(body);
+    res.status(code).json({ code });
+  }
+
+  @Post('submitVote')
+  async submitVote(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.submitVote(body);
+    res.status(code).json({ code });
+  }
 }
