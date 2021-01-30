@@ -18,6 +18,7 @@ import qs from 'qs';
 import { EloUtility } from './EloUtility';
 import { Votes } from './entities/mycard/Votes';
 import { VoteResult } from './entities/mycard/VoteResult';
+import { promises as fs } from 'fs';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -90,6 +91,15 @@ export class AppService {
     this.chineseDirtyFilter = new Filter({
       chineseList: ChineseDirtyWords,
     });
+    this.createUploadDirectory();
+  }
+
+  private async createUploadDirectory() {
+    try {
+      await fs.access('./upload');
+    } catch (e) {
+      await fs.mkdir('./upload');
+    }
   }
 
   private async transaction(

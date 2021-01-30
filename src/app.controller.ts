@@ -1,8 +1,24 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
 import express from 'express';
 import { AppService } from './app.service';
 import { UserInfo } from './entities/mycard/UserInfo';
 import { config } from './config';
+import {
+  AnyFilesInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
+import { IncomingForm } from 'formidable';
 
 @Controller('api')
 export class AppController {
@@ -84,5 +100,40 @@ export class AppController {
   async submitVote(@Body() body: any, @Res() res: express.Response) {
     const code = await this.appService.submitVote(body);
     res.status(code).json({ code });
+  }
+
+  @Post('upload')
+  uploadFile(@Req() req: express.Request, @Res() res: express.Response) {
+    const form = new IncomingForm();
+    form.encoding = 'utf-8';
+    form.uploadDir = 'upload/';
+    form.keepExtensions = true;
+    form.maxFieldsSize = 2 * 1024 * 1024;
+    form.parse(req, function (err, fields, files) {
+      if (err) {
+        console.log(err);
+        return res.status(500).send('upload image fail!');
+      }
+
+      const response: any = {};
+      if (err) {
+        response.code = 500;
+      } else {
+        response.code = 200;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        response.path = files.file.path;
+      }
+
+      res.json(response);
+    });
+  }
+  @Get('download/:id')
+  downloadFile(@Param('id') filename: string, @Res() res: express.Response) {
+    if (!filename) {
+      res.status(400).end('Missing filename.');
+    }
+    const filepath = `upload/${filename}`;
+    res.download(filepath, filename);
   }
 }
