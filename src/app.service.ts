@@ -16,6 +16,8 @@ import axios from 'axios';
 import { config } from './config';
 import qs from 'qs';
 import { EloUtility } from './EloUtility';
+import { Votes } from './entities/mycard/Votes';
+import { VoteResult } from './entities/mycard/VoteResult';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -799,5 +801,117 @@ export class AppService {
     }
 
     return null;
+  }
+
+  async updateVotes(body: any) {
+    const id = parseInt(body.id) || null;
+    const title = body.title as string;
+    const options = body.options as string;
+    const start_time = moment(body.start_time).toDate();
+    const end_time = moment(body.end_time).toDate();
+    const status = !!body.status || false;
+    const multiple = !!body.multiple || false;
+    const max = body.max ? parseInt(body.max) : 2;
+
+    const now = moment().toDate();
+
+    const repo = this.mcdb.getRepository(Votes);
+    let vote;
+    if (id) {
+      vote = await repo.findOne({
+        id,
+      });
+    }
+    if (!vote) {
+      vote = new Votes();
+    }
+    vote.title = title;
+    vote.options = options;
+    vote.startTime = start_time;
+    vote.endTime = end_time;
+    vote.status = status;
+    vote.multiple = multiple;
+    vote.max = max;
+
+    try {
+      await repo.save(vote);
+      return 200;
+    } catch (e) {
+      this.log.error(`Errored updating votes: ${e.toString()}`);
+      return 500;
+    }
+  }
+
+  async updateVoteStatus(body: any) {
+    const id = parseInt(body.id) || null;
+    const status = !!body.status;
+
+    if (!id) {
+      return 401;
+    }
+    const repo = this.mcdb.getRepository(Votes);
+    try {
+      const result = await repo.update({ id }, { status });
+      return result.affected ? 200 : 404;
+    } catch (e) {
+      this.log.error(`Errored updating vote status for ${id}: ${e.toString()}`);
+      return 500;
+    }
+  }
+
+  async submitVote(body: any) {
+    const user: string = body.user;
+    const username: string = body.username;
+
+    if (!user || !username || user == 'undefined' || username == 'undefined') {
+      return 400;
+    }
+
+    const voteid: string = body.voteid;
+    const opid: string = body.opid;
+
+    const opids: string[] = body.opids;
+    const multiple = body.multiple === 'true';
+
+    const date_time = moment().format('YYYY-MM-DD');
+    const create_time = moment().toDate();
+
+    const repo = this.mcdb.getRepository(VoteResult);
+    try {
+      if (multiple) {
+        if (!opids) {
+          return 400;
+        }
+        const voteResults = opids.map((opid) => {
+          const voteResult = new VoteResult();
+          voteResult.voteId = voteid;
+          voteResult.optionId = opid;
+          voteResult.userid = user;
+          voteResult.dateTime = date_time;
+          voteResult.createTime = create_time;
+          return voteResult;
+        });
+        await Promise.all(
+          voteResults.map((voteResult) => repo.save(voteResult)),
+        );
+      } else {
+        const voteResult = new VoteResult();
+        voteResult.voteId = voteid;
+        voteResult.optionId = opid;
+        voteResult.userid = user;
+        voteResult.dateTime = date_time;
+        voteResult.createTime = create_time;
+        await repo.save(voteResult);
+      }
+      if (username) {
+        await this.mcdb
+          .getRepository(UserInfo)
+          .update({ username }, { exp: () => 'exp + 1', id: parseInt(user) });
+      }
+      return 200;
+    } catch (e) {
+      this.log.error(`Failed updating vote result: ${e.toString()}`);
+      return 500;
+    }
   }
 }
