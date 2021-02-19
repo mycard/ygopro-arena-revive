@@ -718,35 +718,44 @@ export class AppService {
       battleHistory.isfirstwin = firstWin;
       battleHistory.decka = deckA;
       battleHistory.deckb = deckB;
-      await Promise.all([
-        repo.save(battleHistory),
-        this.mcdb
-          .createQueryBuilder()
-          .update(UserInfo)
-          .set({
-            exp: expResult.expA,
-            pt: ptResult.ptA,
-            athleticWin: () => `athletic_win + ${paramA.athletic_win}`,
-            athleticLose: () => `athletic_lose + ${paramA.athletic_win}`,
-            athleticDraw: () => `athletic_draw + ${paramA.athletic_win}`,
-            athleticAll: () => `athletic_all + ${paramA.athletic_win}`,
-          })
-          .where('username = :username', { username: userA.username })
-          .execute(),
-        this.mcdb
-          .createQueryBuilder()
-          .update(UserInfo)
-          .set({
-            exp: expResult.expB,
-            pt: ptResult.ptB,
-            athleticWin: () => `athletic_win + ${paramB.athletic_win}`,
-            athleticLose: () => `athletic_lose + ${paramB.athletic_win}`,
-            athleticDraw: () => `athletic_draw + ${paramB.athletic_win}`,
-            athleticAll: () => `athletic_all + ${paramB.athletic_win}`,
-          })
-          .where('username = :username', { username: userB.username })
-          .execute(),
-      ]);
+      await this.transaction(this.mcdb, async (db) => {
+        const repo = db.getRepository(BattleHistory);
+        try {
+          await Promise.all([
+            repo.save(battleHistory),
+            db
+              .createQueryBuilder()
+              .update(UserInfo)
+              .set({
+                exp: expResult.expA,
+                pt: ptResult.ptA,
+                athleticWin: () => `athletic_win + ${paramA.athletic_win}`,
+                athleticLose: () => `athletic_lose + ${paramA.athletic_win}`,
+                athleticDraw: () => `athletic_draw + ${paramA.athletic_win}`,
+                athleticAll: () => `athletic_all + ${paramA.athletic_win}`,
+              })
+              .where('username = :username', { username: userA.username })
+              .execute(),
+            db
+              .createQueryBuilder()
+              .update(UserInfo)
+              .set({
+                exp: expResult.expB,
+                pt: ptResult.ptB,
+                athleticWin: () => `athletic_win + ${paramB.athletic_win}`,
+                athleticLose: () => `athletic_lose + ${paramB.athletic_win}`,
+                athleticDraw: () => `athletic_draw + ${paramB.athletic_win}`,
+                athleticAll: () => `athletic_all + ${paramB.athletic_win}`,
+              })
+              .where('username = :username', { username: userB.username })
+              .execute(),
+          ]);
+          return true;
+        } catch (e) {
+          this.log.error(`Failed to report score: ${e.toString()}`);
+          return false;
+        }
+      });
     } else {
       const expResult = EloUtility.getExpScore(
         userA.exp,
@@ -788,33 +797,42 @@ export class AppService {
       battleHistory.isfirstwin = firstWin;
       battleHistory.decka = deckA;
       battleHistory.deckb = deckB;
-      await Promise.all([
-        repo.save(battleHistory),
-        this.mcdb
-          .createQueryBuilder()
-          .update(UserInfo)
-          .set({
-            exp: expResult.expA,
-            athleticWin: () => `athletic_win + ${paramA.athletic_win}`,
-            athleticLose: () => `athletic_lose + ${paramA.athletic_win}`,
-            athleticDraw: () => `athletic_draw + ${paramA.athletic_win}`,
-            athleticAll: () => `athletic_all + ${paramA.athletic_win}`,
-          })
-          .where('username = :username', { username: userA.username })
-          .execute(),
-        this.mcdb
-          .createQueryBuilder()
-          .update(UserInfo)
-          .set({
-            exp: expResult.expB,
-            athleticWin: () => `athletic_win + ${paramB.athletic_win}`,
-            athleticLose: () => `athletic_lose + ${paramB.athletic_win}`,
-            athleticDraw: () => `athletic_draw + ${paramB.athletic_win}`,
-            athleticAll: () => `athletic_all + ${paramB.athletic_win}`,
-          })
-          .where('username = :username', { username: userB.username })
-          .execute(),
-      ]);
+      await this.transaction(this.mcdb, async (db) => {
+        const repo = db.getRepository(BattleHistory);
+        try {
+          await Promise.all([
+            repo.save(battleHistory),
+            db
+              .createQueryBuilder()
+              .update(UserInfo)
+              .set({
+                exp: expResult.expA,
+                entertainWin: () => `entertain_win + ${paramA.entertain_win}`,
+                entertainLose: () => `entertain_lose + ${paramA.entertain_win}`,
+                entertainDraw: () => `entertain_draw + ${paramA.entertain_win}`,
+                entertainAll: () => `entertain_all + ${paramA.entertain_win}`,
+              })
+              .where('username = :username', { username: userA.username })
+              .execute(),
+            db
+              .createQueryBuilder()
+              .update(UserInfo)
+              .set({
+                exp: expResult.expB,
+                entertainWin: () => `entertain_win + ${paramB.entertain_win}`,
+                entertainLose: () => `entertain_lose + ${paramB.entertain_win}`,
+                entertainDraw: () => `entertain_draw + ${paramB.entertain_win}`,
+                entertainAll: () => `entertain_all + ${paramB.entertain_win}`,
+              })
+              .where('username = :username', { username: userB.username })
+              .execute(),
+          ]);
+          return true;
+        } catch (e) {
+          this.log.error(`Failed to report score: ${e.toString()}`);
+          return false;
+        }
+      });
     }
 
     return null;
@@ -893,43 +911,47 @@ export class AppService {
     const date_time = moment().format('YYYY-MM-DD');
     const create_time = moment().toDate();
 
-    const repo = this.mcdb.getRepository(VoteResult);
-    try {
-      if (multiple) {
-        if (!opids) {
-          return 400;
-        }
-        const voteResults = opids.map((opid) => {
+    let statusCode = 200;
+    await this.transaction(this.mcdb, async (db) => {
+      const repo = db.getRepository(VoteResult);
+      try {
+        if (multiple) {
+          if (!opids) {
+            statusCode = 400;
+            return false;
+          }
+          const voteResults = opids.map((opid) => {
+            const voteResult = new VoteResult();
+            voteResult.voteId = voteid;
+            voteResult.optionId = opid;
+            voteResult.userid = user;
+            voteResult.dateTime = date_time;
+            voteResult.createTime = create_time;
+            return voteResult;
+          });
+          await repo.save(voteResults);
+        } else {
           const voteResult = new VoteResult();
           voteResult.voteId = voteid;
           voteResult.optionId = opid;
           voteResult.userid = user;
           voteResult.dateTime = date_time;
           voteResult.createTime = create_time;
-          return voteResult;
-        });
-        await Promise.all(
-          voteResults.map((voteResult) => repo.save(voteResult)),
-        );
-      } else {
-        const voteResult = new VoteResult();
-        voteResult.voteId = voteid;
-        voteResult.optionId = opid;
-        voteResult.userid = user;
-        voteResult.dateTime = date_time;
-        voteResult.createTime = create_time;
-        await repo.save(voteResult);
+          await repo.save(voteResult);
+        }
+        if (username) {
+          await db
+            .getRepository(UserInfo)
+            .update({ username }, { exp: () => 'exp + 1', id: parseInt(user) });
+        }
+        return true;
+      } catch (e) {
+        this.log.error(`Failed updating vote result: ${e.toString()}`);
+        statusCode = 500;
+        return false;
       }
-      if (username) {
-        await this.mcdb
-          .getRepository(UserInfo)
-          .update({ username }, { exp: () => 'exp + 1', id: parseInt(user) });
-      }
-      return 200;
-    } catch (e) {
-      this.log.error(`Failed updating vote result: ${e.toString()}`);
-      return 500;
-    }
+    });
+    return statusCode;
   }
 
   private async fetchVoteOptionCount(
