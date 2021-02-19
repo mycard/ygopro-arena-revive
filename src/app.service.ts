@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection, InjectEntityManager } from '@nestjs/typeorm';
-import { Connection, EntityManager, LessThan, MoreThanOrEqual } from 'typeorm';
+import {
+  Connection,
+  EntityManager,
+  LessThan,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { UserInfo } from './entities/mycard/UserInfo';
 import Filter from 'bad-words-chinese';
 import { ChineseDirtyWords } from './dirtyWordsChinese';
@@ -1038,16 +1044,17 @@ export class AppService {
 
   async getRandomVote(userid: string) {
     const now = moment().toDate();
-    const allVotes = await this.mcdb
-      .getRepository(Votes)
-      .createQueryBuilder('vote')
-      .where("vote.status = 't'")
-      .andWhere('vote.start_time <= :now', { now })
-      .andWhere('vote.end_time >= :now', { now })
-      .getMany();
+    const allVotes = await this.mcdb.getRepository(Votes).find({
+      status: true,
+      startTime: LessThanOrEqual(now),
+      endTime: MoreThanOrEqual(now),
+    });
     const votedIds = (
       await this.mcdb.getRepository(VoteResult).find({
-        userid,
+        select: ['voteId'],
+        where: {
+          userid,
+        },
       })
     ).map((voteResult) => parseInt(voteResult.voteId));
     const validVotes = allVotes.filter((vote) => !votedIds.includes(vote.id));
