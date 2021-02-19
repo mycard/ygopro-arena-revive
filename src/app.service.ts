@@ -1014,4 +1014,29 @@ export class AppService {
       optionCountMap,
     };
   }
+
+  async getRandomVote(userid: string) {
+    const now = moment().toDate();
+    const allVotes = await this.mcdb
+      .getRepository(Votes)
+      .createQueryBuilder('vote')
+      .where("vote.status = 't'")
+      .andWhere('vote.start_time <= :now', { now })
+      .andWhere('vote.end_time >= :now', { now })
+      .getMany();
+    const votedIds = (
+      await this.mcdb.getRepository(VoteResult).find({
+        userid,
+      })
+    ).map((voteResult) => parseInt(voteResult.voteId));
+    const validVotes = allVotes.filter((vote) => !votedIds.includes(vote.id));
+    if (validVotes.length) {
+      const index = Math.floor(Math.random() * validVotes.length);
+      return {
+        data: validVotes[index],
+      };
+    } else {
+      return { data: 'null' };
+    }
+  }
 }

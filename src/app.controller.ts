@@ -108,6 +108,17 @@ export class AppController {
     return result;
   }
 
+  @Get('vote')
+  async getRandomVote(@Query('user') userid: string) {
+    if (!userid) {
+      return {
+        data: 'null',
+      };
+    }
+    const result = await this.appService.getRandomVote(userid);
+    return result;
+  }
+
   @Post('upload')
   uploadFile(@Req() req: express.Request, @Res() res: express.Response) {
     const form = new IncomingForm();
