@@ -963,7 +963,7 @@ export class AppService {
       voteId: voteId.toString(),
       optionId: optionId.toString(),
     });
-    optionCountMap[optionId] = count;
+    optionCountMap[optionId] = count.toString(); // why to string?
   }
 
   private async fetchVoteInfo(
@@ -986,8 +986,7 @@ export class AppService {
       .where('vote_id = :voteId', { voteId: voteId.toString() })
       .andWhere('option_id in (:...optionIdStrings)', { optionIdStrings })
       .getRawOne();
-    const voteCount: number = parseInt(voteCountResult.voteCount);
-    voteCountMap[voteId] = voteCount;
+    voteCountMap[voteId] = voteCountResult.voteCount;
   }
 
   async getVotes(query: any) {
