@@ -24,7 +24,7 @@ export class Votes {
   @Column('timestamp without time zone', { name: 'end_time', nullable: true })
   endTime: Date;
 
-  @Column('boolean', { name: 'status', nullable: true, default: 'false' })
+  @Column('boolean', { name: 'status', nullable: true, default: false })
   status: boolean;
 
   @Column('boolean', {

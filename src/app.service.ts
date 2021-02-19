@@ -75,6 +75,13 @@ interface PlayerDiff {
   entertain_all: number;
 }
 
+interface VoteOption {
+  key: number;
+  name: string;
+  count: number;
+  percentage: number;
+}
+
 @Injectable()
 export class AppService {
   chineseDirtyFilter: Filter;
@@ -923,5 +930,88 @@ export class AppService {
       this.log.error(`Failed updating vote result: ${e.toString()}`);
       return 500;
     }
+  }
+
+  private async fetchVoteOptionCount(
+    voteId: number,
+    optionId: number,
+    optionCountMap,
+  ) {
+    const count = await this.mcdb.getRepository(VoteResult).count({
+      voteId: voteId.toString(),
+      optionId: optionId.toString(),
+    });
+    optionCountMap[optionId] = count;
+  }
+
+  private async fetchVoteInfo(
+    vote: Votes,
+    optionCountMap: any,
+    voteCountMap: any,
+  ) {
+    const repo = this.mcdb.getRepository(VoteResult);
+    const voteId = vote.id;
+    const options: VoteOption[] = JSON.parse(vote.options);
+    await Promise.all(
+      options.map((option) =>
+        this.fetchVoteOptionCount(voteId, option.key, optionCountMap),
+      ),
+    );
+    const optionIdStrings = options.map((option) => option.key.toString());
+    const voteCountResult = await repo
+      .createQueryBuilder()
+      .select('count(DISTINCT userid)', 'voteCount')
+      .where('vote_id = :voteId', { voteId: voteId.toString() })
+      .andWhere('option_id in (:...optionIdStrings)', { optionIdStrings })
+      .getRawOne();
+    const voteCount: number = parseInt(voteCountResult.voteCount);
+    voteCountMap[voteId] = voteCount;
+  }
+
+  async getVotes(query: any) {
+    const username = query.username;
+    const type = query.type;
+    let status: boolean = undefined;
+    if (type === '1') {
+      status = true;
+    }
+    if (type === '2') {
+      status = false;
+    }
+
+    const from_date = query.from_date;
+    const to_date = query.to_date;
+
+    // page_no 当前页数 page_num 每页展示数
+    // offset = (page_no - 1) * page_num
+    // select * from battle_history limit  5 offset 15;
+    const page_no: number = query.page || 1;
+    const page_num: number = query.page_num || 15;
+    const offset = (page_no - 1) * page_num;
+    const repo = this.mcdb.getRepository(Votes);
+    const countQuery = repo.createQueryBuilder();
+    if (status !== undefined) {
+      countQuery.where('status = :status', { status });
+    }
+    const total = await countQuery.getCount();
+    const voteQuery = repo.createQueryBuilder();
+    if (status !== undefined) {
+      voteQuery.where('status = :status', { status });
+    }
+    voteQuery.orderBy('create_time', 'DESC').limit(page_num).offset(offset);
+    const votes = await voteQuery.getMany();
+    const optionCountMap: any = {};
+    const voteCountMap: any = {};
+    await Promise.all(
+      votes.map((vote) =>
+        this.fetchVoteInfo(vote, optionCountMap, voteCountMap),
+      ),
+    );
+    return {
+      total,
+      data: votes,
+      voteCountMap,
+      optionCountMap,
+    };
   }
 }

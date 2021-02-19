@@ -102,6 +102,12 @@ export class AppController {
     res.status(code).json({ code });
   }
 
+  @Get('votes')
+  async getVotes(@Query() query: any) {
+    const result = await this.appService.getVotes(query);
+    return result;
+  }
+
   @Post('upload')
   uploadFile(@Req() req: express.Request, @Res() res: express.Response) {
     const form = new IncomingForm();
@@ -115,7 +121,9 @@ export class AppController {
         return res.status(500).send('upload image fail!');
       }
 
-      const response: any = {};
+      const response = {
+        code: 200,
+      };
       if (err) {
         response.code = 500;
       } else {
@@ -125,7 +133,7 @@ export class AppController {
         response.path = files.file.path;
       }
 
-      res.json(response);
+      res.status(response.code).json(response);
     });
   }
   @Get('download/:id')
