@@ -5,6 +5,7 @@ import {
   EntityManager,
   LessThan,
   LessThanOrEqual,
+  Like,
   MoreThanOrEqual,
 } from 'typeorm';
 import { UserInfo } from './entities/mycard/UserInfo';
@@ -25,6 +26,10 @@ import { EloUtility } from './EloUtility';
 import { Votes } from './entities/mycard/Votes';
 import { VoteResult } from './entities/mycard/VoteResult';
 import { promises as fs } from 'fs';
+import { scheduleJob } from 'node-schedule';
+import { DeckInfo } from './entities/mycard/DeckInfo';
+import { DeckInfoHistory } from './entities/mycard/DeckInfoHistory';
+import { DeckDemo } from './entities/mycard/DeckDemo';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -105,6 +110,38 @@ export class AppService {
       chineseList: ChineseDirtyWords,
     });
     this.createUploadDirectory();
+    if (config.enableSchedule) {
+      scheduleJob('0 0 0 1 * *', async () => {
+        await this.monthlyJob();
+      });
+    }
+  }
+
+  private async monthlyJob() {
+    this.log.log(
+      `The scheduleJob run on first day of every month: ${moment().format(
+        'YYYY-MM-DD HH:mm',
+      )}`,
+    );
+    const time = moment().subtract(1, 'month');
+    const season = time.format('YYYY-MM');
+    const higher_limit = time.format('YYYY-MM-01 00:00:01');
+    const lower_limit = moment()
+      .subtract(1, 'day')
+      .format('YYYY-MM-DD 23:59:59');
+    const base = 1000;
+    try {
+      await this.mcdb.query(
+        'select monthly_user_historical_record($1::text, $2, $3::boolean, true)',
+        [season, base, false],
+      );
+      await this.mcdb.query('select collect_win_lose_rate($1, $2)', [
+        lower_limit,
+        higher_limit,
+      ]);
+    } catch (e) {
+      this.log.error(`Failed to run monthly job: ${e.toString()}`);
+    }
   }
 
   private async createUploadDirectory() {
@@ -1066,5 +1103,56 @@ export class AppService {
     } else {
       return { data: 'null' };
     }
+  }
+
+  async getDeckInfo(query: any) {
+    const name: string = query.name;
+    const version = query.version;
+    let deck: any;
+    if (version) {
+      deck = await this.mcdb
+        .getRepository(DeckInfo)
+        .createQueryBuilder()
+        .where('name = :name', { name })
+        .andWhere('id = :id', { id: parseInt(version) })
+        .orderBy('start_time', 'DESC')
+        .getRawOne();
+    } else {
+      deck = await this.mcdb
+        .getRepository(DeckInfo)
+        .createQueryBuilder()
+        .where('name like :name', { name: `%${name}%` })
+        .orderBy('start_time', 'DESC')
+        .getRawOne();
+    }
+    if (!deck) {
+      return {
+        code: 404,
+      };
+    }
+    const resName = deck.name;
+    const history = await this.mcdb
+      .getRepository(DeckInfoHistory)
+      .createQueryBuilder()
+      .where('name = :name', { name: resName })
+      .orderBy('start_time', 'DESC')
+      .getRawMany();
+    const demo = (
+      await this.mcdb
+        .getRepository(DeckDemo)
+        .createQueryBuilder()
+        .where('name = :name', { name: resName })
+        .orderBy('create_time', 'DESC')
+        .getRawMany()
+    ).map((row) => {
+      row.create_time = moment(row.create_time).format('YYYY-MM-DD');
+      return row;
+    });
+    return {
+      code: 200,
+      demo,
+      history,
+      data: deck,
+    };
   }
 }

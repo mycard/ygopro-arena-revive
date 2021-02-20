@@ -147,6 +147,14 @@ export class AppController {
       res.status(response.code).json(response);
     });
   }
+  @Get('deckinfo')
+  async getDeckInfo(@Query() query, @Res() res: express.Response) {
+    if (!query.name) {
+      res.status(404).send('deck name is required!');
+    }
+    const result = await this.appService.getDeckInfo(query);
+    res.status(result.code).json(result);
+  }
   @Get('download/:id')
   downloadFile(@Param('id') filename: string, @Res() res: express.Response) {
     if (!filename) {
