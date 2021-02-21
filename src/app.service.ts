@@ -1416,25 +1416,6 @@ export class AppService {
       const query = this.mcdb
         .getRepository(BattleHistory)
         .createQueryBuilder()
-        .select([
-          'usernamea',
-          'usernameb',
-          'userscorea',
-          'userscoreb',
-          'expa',
-          'expb',
-          'expa_ex',
-          'expb_ex',
-          'pta',
-          'ptb',
-          'pta_ex',
-          'ptb_ex',
-          'type',
-          'start_time',
-          'end_time',
-          'winner',
-          'isfirstwin',
-        ])
         .where('1 = 1');
       if (username) {
         query.andWhere(
