@@ -1462,8 +1462,8 @@ export class AppService {
     if (!user) {
       return resultData;
     }
-    resultData['exp'] = user['exp'];
-    resultData['pt'] = user['pt'];
+    resultData['exp'] = Math.floor(user['exp']);
+    resultData['pt'] = Math.floor(user['pt']);
 
     resultData['entertain_win'] = user['entertain_win'];
     resultData['entertain_lose'] = user['entertain_lose'];
