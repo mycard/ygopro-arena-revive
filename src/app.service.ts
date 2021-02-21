@@ -1434,6 +1434,10 @@ export class AppService {
       query.orderBy('start_time', 'DESC');
       return query;
     });
+    for (const history of ret.data) {
+      history.decka = null;
+      history.deckb = null;
+    }
     return ret;
   }
   async getUser(username: string) {
