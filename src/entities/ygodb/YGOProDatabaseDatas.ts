@@ -1,9 +1,13 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToOne } from 'typeorm';
+import { YGOProDatabaseTexts } from './YGOProDatabaseTexts';
 
 @Entity('datas')
 export class YGOProDatabaseDatas {
   @Column('integer', { primary: true, name: 'id' })
-  id: number | null;
+  id: number;
+
+  @OneToOne((type) => YGOProDatabaseTexts, (texts) => texts.datas)
+  texts: YGOProDatabaseTexts;
 
   @Column('integer', { name: 'ot', nullable: true })
   ot: number | null;

@@ -1,9 +1,15 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToOne } from 'typeorm';
+import { YGOProDatabaseDatas } from './YGOProDatabaseDatas';
+import { JoinColumn } from 'typeorm';
 
 @Entity('texts')
 export class YGOProDatabaseTexts {
   @Column('integer', { primary: true, name: 'id' })
   id: number;
+
+  @OneToOne((type) => YGOProDatabaseDatas, (datas) => datas.texts)
+  @JoinColumn({ name: 'id', referencedColumnName: 'id' })
+  datas: YGOProDatabaseDatas;
 
   @Column('text', { name: 'name', nullable: true })
   name: string | null;

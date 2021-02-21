@@ -93,6 +93,13 @@ interface VoteOption {
   percentage: number;
 }
 
+interface DeckInfoCard {
+  id: number;
+  num: number;
+  name?: string;
+  type?: string;
+}
+
 @Injectable()
 export class AppService {
   chineseDirtyFilter: Filter;
@@ -1153,6 +1160,131 @@ export class AppService {
       demo,
       history,
       data: deck,
+    };
+  }
+
+  private async fillCardInfo(item: DeckInfoCard) {
+    const lang = 'cn';
+    const id = item.id;
+    const card = await this.cndb.getRepository(YGOProDatabaseDatas).findOne({
+      where: { id },
+      relations: ['texts'],
+    });
+    if (!card) {
+      this.log.error(`Card ${item.id} not found in database.`);
+      item.name = 'Not found in database';
+      item.type = '怪兽';
+      return;
+    }
+    item.name = card.texts.name;
+    item.type = getStringValueByMysticalNumber(lang, typeOffset, card.type);
+  }
+
+  private async fillCardInfoBatch(arr: DeckInfoCard[]) {
+    return await Promise.all(arr.map((item) => this.fillCardInfo(item)));
+  }
+
+  async getDeckData(filename: string) {
+    const filepath = 'upload/' + filename;
+
+    let contentsRaw: string;
+    try {
+      contentsRaw = await fs.readFile(filepath, 'utf8');
+    } catch (e) {
+      return null;
+    }
+
+    const contents = contentsRaw.split(/\r?\n/);
+
+    const mainCardArr: DeckInfoCard[] = [];
+    const extraCardArr: DeckInfoCard[] = [];
+    const sideCardArr: DeckInfoCard[] = [];
+
+    const masterCardArr: DeckInfoCard[] = [];
+    const trapCardArr: DeckInfoCard[] = [];
+    const spellCardArr: DeckInfoCard[] = [];
+
+    const mainOriginal: number[] = [];
+    const extraOriginal: number[] = [];
+    const sideOriginal: number[] = [];
+
+    let current = mainOriginal;
+
+    _.each(contents, function (text) {
+      if (text === '#main') {
+        current = mainOriginal;
+      }
+      if (text === '#extra') {
+        current = extraOriginal;
+      }
+      if (text === '!side') {
+        current = sideOriginal;
+      }
+
+      if (text === '#main' || text === '#extra' || text === '!side') {
+        return;
+      }
+
+      if (text.indexOf('created') !== -1) {
+        return;
+      }
+
+      if (text.trim() === '') {
+        return;
+      }
+      const parsedText = parseInt(text);
+      if (isNaN(parsedText)) {
+        return;
+      }
+      current.push(parsedText);
+    });
+
+    const main = _.countBy(mainOriginal, Math.floor);
+    const extra = _.countBy(extraOriginal, Math.floor);
+    const side = _.countBy(sideOriginal, Math.floor);
+
+    _.each(main, function (value, key) {
+      mainCardArr.push({
+        id: parseInt(key),
+        num: value,
+      });
+    });
+
+    _.each(extra, function (value, key) {
+      extraCardArr.push({
+        id: parseInt(key),
+        num: value,
+      });
+    });
+
+    _.each(side, function (value, key) {
+      sideCardArr.push({
+        id: parseInt(key),
+        num: value,
+      });
+    });
+    await Promise.all(
+      [mainCardArr, sideCardArr, extraCardArr].map((arr) =>
+        this.fillCardInfoBatch(arr),
+      ),
+    );
+    for (const item of mainCardArr) {
+      if (item.type === '怪兽') {
+        masterCardArr.push(item);
+      } else if (item.type === '魔法') {
+        spellCardArr.push(item);
+      } else if (item.type === '陷阱') {
+        trapCardArr.push(item);
+      } else {
+        masterCardArr.push(item);
+      }
+    }
+    return {
+      monster: masterCardArr,
+      spells: spellCardArr,
+      traps: trapCardArr,
+      extra: extraCardArr,
+      side: sideCardArr,
     };
   }
 }

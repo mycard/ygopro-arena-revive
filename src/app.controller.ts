@@ -118,7 +118,14 @@ export class AppController {
     const result = await this.appService.getRandomVote(userid);
     return result;
   }
-
+  @Get('deckinfo')
+  async getDeckInfo(@Query() query, @Res() res: express.Response) {
+    if (!query.name) {
+      res.status(404).send('deck name is required!');
+    }
+    const result = await this.appService.getDeckInfo(query);
+    res.status(result.code).json(result);
+  }
   @Post('upload')
   uploadFile(@Req() req: express.Request, @Res() res: express.Response) {
     const form = new IncomingForm();
@@ -147,14 +154,6 @@ export class AppController {
       res.status(response.code).json(response);
     });
   }
-  @Get('deckinfo')
-  async getDeckInfo(@Query() query, @Res() res: express.Response) {
-    if (!query.name) {
-      res.status(404).send('deck name is required!');
-    }
-    const result = await this.appService.getDeckInfo(query);
-    res.status(result.code).json(result);
-  }
   @Get('download/:id')
   downloadFile(@Param('id') filename: string, @Res() res: express.Response) {
     if (!filename) {
@@ -162,5 +161,20 @@ export class AppController {
     }
     const filepath = `upload/${filename}`;
     res.download(filepath, filename);
+  }
+
+  @Get('deckdata/:id')
+  async getDeckData(
+    @Param('id') filename: string,
+    @Res() res: express.Response,
+  ) {
+    if (!filename) {
+      res.status(400).end('Missing filename.');
+    }
+    const deck = await this.appService.getDeckData(filename);
+    if (!deck) {
+      res.status(404).end('File not found.');
+    }
+    res.json({ deck });
   }
 }
