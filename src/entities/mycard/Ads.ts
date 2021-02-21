@@ -20,21 +20,21 @@ export class Ads {
     nullable: true,
     length: 1000,
   })
-  imgpUrl: string;
+  imgp_url: string;
 
   @Column('character varying', {
     name: 'imgm_url',
     nullable: true,
     length: 1000,
   })
-  imgmUrl: string;
+  imgm_url: string;
 
   @Column('character varying', {
     name: 'click_ref',
     nullable: true,
     length: 1000,
   })
-  clickRef: string;
+  click_ref: string;
 
   @Column('character varying', {
     name: 'click_url',
@@ -48,7 +48,7 @@ export class Ads {
     nullable: true,
     length: 1000,
   })
-  implUrl: string;
+  impl_url: string;
 
   @Column('integer', { name: 'impl', nullable: true, default: 0 })
   impl: number;
@@ -63,13 +63,13 @@ export class Ads {
     name: 'update_time',
     nullable: true,
   })
-  updateTime: Date;
+  update_time: Date;
 
   @Column('timestamp without time zone', {
     name: 'create_time',
     nullable: true,
   })
-  createTime: Date;
+  create_time: Date;
 
   @Column('character varying', {
     name: 'type',

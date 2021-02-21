@@ -1,6 +1,6 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-@Index('battle_history_end_time_index', ['endTime'], {})
+@Index('battle_history_end_time_index', ['end_time'], {})
 @Index('battle_history_usernamea_index', ['usernamea'], {})
 @Index('battle_history_usernameb_index', ['usernameb'], {})
 @Entity('battle_history', { schema: 'public' })
@@ -39,7 +39,7 @@ export class BattleHistory {
     precision: 53,
     default: 0,
   })
-  expaEx: number;
+  expa_ex: number;
 
   @Column('double precision', {
     name: 'expb_ex',
@@ -47,7 +47,7 @@ export class BattleHistory {
     precision: 53,
     default: 0,
   })
-  expbEx: number;
+  expb_ex: number;
 
   @Column('double precision', {
     name: 'pta',
@@ -71,7 +71,7 @@ export class BattleHistory {
     precision: 53,
     default: 0,
   })
-  ptaEx: number;
+  pta_ex: number;
 
   @Column('double precision', {
     name: 'ptb_ex',
@@ -79,18 +79,18 @@ export class BattleHistory {
     precision: 53,
     default: 0,
   })
-  ptbEx: number;
+  ptb_ex: number;
 
   @Column('character varying', { name: 'type', length: 100 })
   type: string;
 
   @Column('timestamp without time zone', { name: 'start_time', nullable: true })
-  startTime: Date;
+  start_time: Date;
 
   @PrimaryColumn('timestamp without time zone', {
     name: 'end_time',
   })
-  endTime: Date;
+  end_time: Date;
 
   @Column('text', { name: 'winner', nullable: true })
   winner: string;

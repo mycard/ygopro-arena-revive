@@ -276,12 +276,13 @@ export class AppService {
     }
   }
 
-  async getReport(inputFromTime: string, inputToTime: string) {
-    const fromTime = (inputFromTime ? moment(inputFromTime) : moment()).format(
-      'YYYY-MM-DD',
-    );
-    const toTime = (inputToTime
-      ? moment(inputToTime)
+  async getReport(inputFrom_time: string, inputTo_time: string) {
+    const from_time = (inputFrom_time
+      ? moment(inputFrom_time)
+      : moment()
+    ).format('YYYY-MM-DD');
+    const to_time = (inputTo_time
+      ? moment(inputTo_time)
       : moment().add(1, 'day')
     ).format('YYYY-MM-DD');
     try {
@@ -301,16 +302,16 @@ export class AppService {
           .select('count(*)', 'entertainTotal')
           .from(BattleHistory, 'battleHistory')
           .where('type = :type', { type: 'entertain' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .getRawOne(),
         this.mcdb.manager
           .createQueryBuilder()
           .select('count(*)', 'entertainDisconnect')
           .from(BattleHistory, 'battleHistory')
           .where('type = :type', { type: 'entertain' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .andWhere('(userscorea < 0 or userscoreb < 0)')
           .getRawOne(),
         this.mcdb.manager
@@ -318,24 +319,24 @@ export class AppService {
           .select('count(DISTINCT usernamea)', 'entertainUsers')
           .from(BattleHistory, 'battleHistory')
           .where('type = :type', { type: 'entertain' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .getRawOne(),
         this.mcdb.manager
           .createQueryBuilder()
           .select('count(*)', 'athleticTotal')
           .from(BattleHistory, 'battleHistory')
           .where('type = :type', { type: 'athletic' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .getRawOne(),
         this.mcdb.manager
           .createQueryBuilder()
           .select('count(*)', 'athleticDisconnect')
           .from(BattleHistory, 'battleHistory')
           .where('type = :type', { type: 'athletic' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .andWhere('(userscorea < 0 or userscoreb < 0)')
           .getRawOne(),
         this.mcdb.manager
@@ -343,30 +344,30 @@ export class AppService {
           .select('count(DISTINCT usernamea)', 'athleticUsers')
           .from(BattleHistory, 'battleHistory')
           .where('type = :type', { type: 'athletic' })
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .getRawOne(),
         this.mcdb.manager
           .createQueryBuilder()
           .select('count(DISTINCT usernamea)', 'totalActive')
           .from(BattleHistory, 'battleHistory')
-          .andWhere('start_time >= :fromTime', { fromTime })
-          .andWhere('start_time < :toTime', { toTime })
+          .andWhere('start_time >= :from_time', { from_time })
+          .andWhere('start_time < :to_time', { to_time })
           .getRawOne(),
         this.mcdb.getRepository(BattleHistory).find({
-          select: ['startTime'],
+          select: ['start_time'],
           where: {
             type: 'entertain',
-            startTime: MoreThanOrEqual(fromTime),
-            endTime: LessThan(toTime),
+            start_time: MoreThanOrEqual(from_time),
+            end_time: LessThan(to_time),
           },
         }),
         this.mcdb.getRepository(BattleHistory).find({
-          select: ['startTime'],
+          select: ['start_time'],
           where: {
             type: 'athletic',
-            startTime: MoreThanOrEqual(fromTime),
-            endTime: LessThan(toTime),
+            start_time: MoreThanOrEqual(from_time),
+            end_time: LessThan(to_time),
           },
         }),
       ]);
@@ -383,8 +384,8 @@ export class AppService {
       let totalEntertain = 0;
       _.forEach(hourlyAthletic, function (row) {
         totalAthletic++;
-        dateHour = moment(row.startTime).format('YYYY-MM-DD HH');
-        h = moment(row.endTime).format('H');
+        dateHour = moment(row.start_time).format('YYYY-MM-DD HH');
+        h = moment(row.end_time).format('H');
         if (hourlyDataMap['athletic'][dateHour]) {
           hourlyDataMap['athletic'][dateHour]++;
         } else {
@@ -399,8 +400,8 @@ export class AppService {
       });
       _.forEach(hourlyEntertain, function (row) {
         totalEntertain++;
-        dateHour = moment(row.startTime).format('YYYY-MM-DD HH');
-        h = moment(row.endTime).format('H');
+        dateHour = moment(row.start_time).format('YYYY-MM-DD HH');
+        h = moment(row.end_time).format('H');
         if (hourlyDataMap['entertain'][dateHour]) {
           hourlyDataMap['entertain'][dateHour]++;
         } else {
@@ -413,7 +414,7 @@ export class AppService {
           hourlyAvgMapEntertain[h] = 1;
         }
       });
-      const totalDays = moment(toTime).diff(fromTime, 'days');
+      const totalDays = moment(to_time).diff(from_time, 'days');
 
       //饼图
       const legendDataAthletic = [];
@@ -761,15 +762,15 @@ export class AppService {
       battleHistory.userscoreb = userscoreB;
       battleHistory.expa = expResult.expA;
       battleHistory.expb = expResult.expB;
-      battleHistory.expaEx = userA.exp;
-      battleHistory.expbEx = userB.exp;
+      battleHistory.expa_ex = userA.exp;
+      battleHistory.expb_ex = userB.exp;
       battleHistory.pta = ptResult.ptA;
       battleHistory.ptb = ptResult.ptB;
-      battleHistory.ptaEx = userA.pt;
-      battleHistory.ptbEx = userB.pt;
+      battleHistory.pta_ex = userA.pt;
+      battleHistory.ptb_ex = userB.pt;
       battleHistory.type = arena;
-      battleHistory.startTime = moment(start).toDate();
-      battleHistory.endTime = moment(end).toDate();
+      battleHistory.start_time = moment(start).toDate();
+      battleHistory.end_time = moment(end).toDate();
       battleHistory.winner = winner;
       battleHistory.isfirstwin = firstWin;
       battleHistory.decka = deckA;
@@ -840,15 +841,15 @@ export class AppService {
       battleHistory.userscoreb = userscoreB;
       battleHistory.expa = expResult.expA;
       battleHistory.expb = expResult.expB;
-      battleHistory.expaEx = userA.exp;
-      battleHistory.expbEx = userB.exp;
+      battleHistory.expa_ex = userA.exp;
+      battleHistory.expb_ex = userB.exp;
       battleHistory.pta = userA.pt;
       battleHistory.ptb = userA.pt;
-      battleHistory.ptaEx = userA.pt;
-      battleHistory.ptbEx = userB.pt;
+      battleHistory.pta_ex = userA.pt;
+      battleHistory.ptb_ex = userB.pt;
       battleHistory.type = arena;
-      battleHistory.startTime = moment(start).toDate();
-      battleHistory.endTime = moment(end).toDate();
+      battleHistory.start_time = moment(start).toDate();
+      battleHistory.end_time = moment(end).toDate();
       battleHistory.winner = winner;
       battleHistory.isfirstwin = firstWin;
       battleHistory.decka = deckA;
@@ -922,8 +923,8 @@ export class AppService {
     }
     vote.title = title;
     vote.options = options;
-    vote.startTime = start_time;
-    vote.endTime = end_time;
+    vote.start_time = start_time;
+    vote.end_time = end_time;
     vote.status = status;
     vote.multiple = multiple;
     vote.max = max;
@@ -982,21 +983,21 @@ export class AppService {
           }
           const voteResults = opids.map((opid) => {
             const voteResult = new VoteResult();
-            voteResult.voteId = voteid;
-            voteResult.optionId = opid;
+            voteResult.vote_id = voteid;
+            voteResult.option_id = opid;
             voteResult.userid = user;
-            voteResult.dateTime = date_time;
-            voteResult.createTime = create_time;
+            voteResult.date_time = date_time;
+            voteResult.create_time = create_time;
             return voteResult;
           });
           await repo.save(voteResults);
         } else {
           const voteResult = new VoteResult();
-          voteResult.voteId = voteid;
-          voteResult.optionId = opid;
+          voteResult.vote_id = voteid;
+          voteResult.option_id = opid;
           voteResult.userid = user;
-          voteResult.dateTime = date_time;
-          voteResult.createTime = create_time;
+          voteResult.date_time = date_time;
+          voteResult.create_time = create_time;
           await repo.save(voteResult);
         }
         if (username) {
@@ -1020,8 +1021,8 @@ export class AppService {
     optionCountMap,
   ) {
     const count = await this.mcdb.getRepository(VoteResult).count({
-      voteId: voteId.toString(),
-      optionId: optionId.toString(),
+      vote_id: voteId.toString(),
+      option_id: optionId.toString(),
     });
     optionCountMap[optionId] = count.toString(); // why to string?
   }
@@ -1102,12 +1103,12 @@ export class AppService {
     });
     const votedIds = (
       await this.mcdb.getRepository(VoteResult).find({
-        select: ['voteId'],
+        select: ['vote_id'],
         where: {
           userid,
         },
       })
-    ).map((voteResult) => parseInt(voteResult.voteId));
+    ).map((voteResult) => parseInt(voteResult.vote_id));
     const validVotes = allVotes.filter((vote) => !votedIds.includes(vote.id));
     if (validVotes.length) {
       const index = Math.floor(Math.random() * validVotes.length);
