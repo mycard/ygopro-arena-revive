@@ -33,6 +33,8 @@ import { DeckInfo } from './entities/mycard/DeckInfo';
 import { DeckInfoHistory } from './entities/mycard/DeckInfoHistory';
 import { DeckDemo } from './entities/mycard/DeckDemo';
 import { Deck } from './entities/mycard/Deck';
+import { Ads } from './entities/mycard/Ads';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -473,7 +475,7 @@ export class AppService {
         .getRepository(SiteConfig)
         .findOneOrFail({
           select: ['configValue'],
-          where: [configKey],
+          where: { configKey },
         });
       return configObject.configValue;
     } catch (e) {
@@ -1497,5 +1499,168 @@ export class AppService {
       exp: MoreThanOrEqual(user.exp),
     });
     return resultData;
+  }
+  async updateAds(body: any) {
+    const id: number = body.id;
+    const name: string = body.name;
+    const desc: string = body.desc;
+    const imgp: string = body.imgp;
+    const imgm: string = body.imgm;
+    const clkref: string = body.clkref;
+    const implurl: string = body.implurl;
+    const clkurl: string = body.clkurl;
+    const status: boolean = body.status != null ? body.status === 'true' : true;
+    const type = body.type || '1';
+
+    const now = moment().toDate();
+
+    let ads: Ads;
+    const repo = this.mcdb.getRepository(Ads);
+
+    if (id) {
+      ads = await repo.findOne({ id });
+      if (!ads) {
+        return 404;
+      }
+    } else {
+      ads = new Ads();
+      ads.create_time = now;
+    }
+    ads.update_time = now;
+    ads.name = name;
+    ads.desctext = desc;
+    ads.imgm_url = imgm;
+    ads.imgp_url = imgp;
+    ads.click_ref = clkref;
+    ads.click_url = clkurl;
+    ads.impl_url = implurl;
+    ads.status = status;
+    ads.type = type;
+
+    try {
+      await repo.save(ads);
+    } catch (e) {
+      this.log.error(`Failed to save ad ${name}: ${e.toString()}`);
+      return 500;
+    }
+
+    return 200;
+  }
+  async getAds(query: any) {
+    const username = query.username;
+    const type = query.type;
+
+    let status: boolean = undefined;
+    if (type === '1') {
+      status = true;
+    }
+    if (type === '2') {
+      status = false;
+    }
+
+    const from_date = query.from_date;
+    const to_date = query.to_date;
+
+    // page_no 当前页数 page_num 每页展示数
+    // offset = (page_no - 1) * page_num
+    // select * from battle_history limit  5 offset 15;
+    const page_no = query.page || 1;
+    const page_num = query.page_num || 15;
+    const ad_switch = (await this.getSiteConfig('auto_close_ad')) === 'true';
+    return {
+      ad_switch,
+      ...(await this.queryPageAndTotal(page_no, page_num, () => {
+        const query = this.mcdb.getRepository(Ads).createQueryBuilder();
+        if (status !== undefined) {
+          query.where('status = :status', { status });
+        }
+        query.orderBy('create_time', 'DESC');
+        return query;
+      })),
+    };
+  }
+  async getRandomAd(typeInput: string) {
+    const type = typeInput || '1';
+    const repo = await this.mcdb.getRepository(Ads);
+    const auto_close_ad = await this.getSiteConfig('auto_close_ad');
+    const totalAdCount = await repo.count({ where: { status: true, type } });
+    if (!totalAdCount) {
+      return {
+        data: 'null',
+        auto_close_ad,
+      };
+    }
+    const targetAd = await repo
+      .createQueryBuilder()
+      .where('status = true')
+      .andWhere('type = :type', { type })
+      .offset(Math.floor(Math.random() * totalAdCount))
+      .limit(1)
+      .getOne();
+    return {
+      data: targetAd,
+      auto_close_ad,
+    };
+  }
+  async updateAdsStatus(body: any) {
+    const id: number = body.id;
+    const status: boolean = body.status && body.status !== 'false';
+
+    const now = moment().toDate();
+
+    try {
+      await this.mcdb.getRepository(Ads).update({ id }, { status });
+      return 200;
+    } catch (e) {
+      this.log.error(
+        `Failed to update ads status of ${id} to ${status}: ${e.toString()}`,
+      );
+      return 500;
+    }
+  }
+  async increaseAds(id: number, field: string) {
+    if (!id) {
+      return 400;
+    }
+    const increaseStatement: QueryDeepPartialEntity<Ads> = {
+      [field]: () => `${field} + 1`,
+    };
+    try {
+      await this.mcdb.getRepository(Ads).update({ id }, increaseStatement);
+      return 200;
+    } catch (e) {
+      this.log.error(
+        `Failed to increase ads's ${field} of ${id}: ${e.toString()}`,
+      );
+      return 500;
+    }
+  }
+  async getFirstWinActivity(username: string) {
+    if (!username) {
+      return {};
+    }
+    const activity: any = JSON.parse(await this.getSiteConfig('activity'));
+    activity.total = (
+      await this.mcdb
+        .getRepository(BattleHistory)
+        .createQueryBuilder()
+        .where(
+          "type ='athletic' and isfirstwin='t' and ( (usernameA = :username AND  userscorea > userscoreb ) OR (usernameB = :username AND userscoreb > userscorea) ) and start_time > :start  and start_time < :end",
+          { username, start: activity.start, end: activity.end },
+        )
+        .getCount()
+    ).toString();
+    const today = moment().format('YYYY-MM-DD');
+    activity.today = (
+      await this.mcdb
+        .getRepository(BattleHistory)
+        .createQueryBuilder()
+        .where(
+          "type ='athletic' and isfirstwin='t' and ( (usernameA = :username AND  userscorea > userscoreb ) OR (usernameB = :username AND userscoreb > userscorea) ) and start_time > :start",
+          { username, start: today },
+        )
+        .getCount()
+    ).toString();
+    return activity;
   }
 }

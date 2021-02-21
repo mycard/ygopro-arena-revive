@@ -41,7 +41,7 @@ export class Ads {
     nullable: true,
     length: 1000,
   })
-  clickUrl: string;
+  click_url: string;
 
   @Column('character varying', {
     name: 'impl_url',

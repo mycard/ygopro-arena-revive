@@ -88,7 +88,7 @@ export class AppController {
   @Get('label')
   async getLabel(@Res() res: express.Response) {
     const value = await this.appService.getSiteConfig('label');
-    if (value) {
+    if (value != null) {
       res.status(200).json({
         code: 200,
         text: value,
@@ -228,5 +228,45 @@ export class AppController {
   @Get('user')
   async getUser(@Query('username') username: string) {
     return await this.appService.getUser(username);
+  }
+  @Post('ads')
+  async updateAds(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.updateAds(body);
+    res.status(code).json({ code });
+  }
+  @Get('ads')
+  async getAds(@Query() query: any) {
+    return await this.appService.getAds(query);
+  }
+  @Get('getAd')
+  async getRandomAd(@Query('type') type: string) {
+    return await this.appService.getRandomAd(type);
+  }
+  @Post('adsStatus')
+  async updateAdsStatus(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.updateAdsStatus(body);
+    res.status(code).json({ code });
+  }
+  @Post('adClick')
+  async adClick(@Body('id') id: string, @Res() res: express.Response) {
+    if (!id) {
+      res.status(400).json({ code: 400 });
+      return;
+    }
+    const code = await this.appService.increaseAds(parseInt(id), 'clk');
+    res.status(code).json({ code });
+  }
+  @Post('adImpl')
+  async adImpl(@Body('id') id: string, @Res() res: express.Response) {
+    if (!id) {
+      res.status(400).json({ code: 400 });
+      return;
+    }
+    const code = await this.appService.increaseAds(parseInt(id), 'impl');
+    res.status(code).json({ code });
+  }
+  @Get('firstwin')
+  async getFirstWinActivity(@Query('username') username: string) {
+    return await this.appService.getFirstWinActivity(username);
   }
 }
