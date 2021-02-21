@@ -184,7 +184,7 @@ export class AppService {
     await runner.release();
   }
 
-  async getUsersRaw(orderByPoints: boolean) {
+  async getUsers(orderByPoints: boolean) {
     const repo = this.mcdb.getRepository(UserInfo);
     const orderByWhat = orderByPoints ? 'pt' : 'exp';
     return await repo
@@ -1433,5 +1433,69 @@ export class AppService {
       return query;
     });
     return ret;
+  }
+  async getUser(username: string) {
+    const resultData = {
+      exp: 0,
+      pt: 1000,
+      entertain_win: 0,
+      entertain_lose: 0,
+      entertain_draw: 0,
+      entertain_all: 0,
+      entertain_wl_ratio: '0',
+      exp_rank: 0,
+      athletic_win: 0,
+      athletic_lose: 0,
+      athletic_draw: 0,
+      athletic_all: 0,
+      athletic_wl_ratio: '0',
+      arena_rank: 0,
+    };
+    if (!username) {
+      return resultData;
+    }
+    const user = await this.mcdb.getRepository(UserInfo).findOne({
+      where: { username },
+    });
+    if (!user) {
+      return resultData;
+    }
+    resultData['exp'] = user['exp'];
+    resultData['pt'] = user['pt'];
+
+    resultData['entertain_win'] = user['entertain_win'];
+    resultData['entertain_lose'] = user['entertain_lose'];
+    resultData['entertain_draw'] = user['entertain_draw'];
+    resultData['entertain_all'] = user['entertain_all'];
+
+    let entertain_wl_ratio = '0';
+    if (user['entertain_all'] > 0) {
+      entertain_wl_ratio = (
+        (user['entertain_win'] / user['entertain_all']) *
+        100
+      ).toFixed(2);
+    }
+    resultData['entertain_wl_ratio'] = entertain_wl_ratio;
+
+    resultData['athletic_win'] = user['athletic_win'];
+    resultData['athletic_lose'] = user['athletic_lose'];
+    resultData['athletic_draw'] = user['athletic_draw'];
+    resultData['athletic_all'] = user['athletic_all'];
+
+    let athletic_wl_ratio = '0';
+    if (user['athletic_all'] > 0) {
+      athletic_wl_ratio = (
+        (user['athletic_win'] / user['athletic_all']) *
+        100
+      ).toFixed(2);
+    }
+    resultData['athletic_wl_ratio'] = athletic_wl_ratio;
+    resultData.arena_rank = await this.mcdb.getRepository(UserInfo).count({
+      pt: MoreThanOrEqual(user.pt),
+    });
+    resultData.exp_rank = await this.mcdb.getRepository(UserInfo).count({
+      exp: MoreThanOrEqual(user.exp),
+    });
+    return resultData;
   }
 }

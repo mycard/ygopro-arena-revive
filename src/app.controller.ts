@@ -49,7 +49,7 @@ export class AppController {
 
   @Get('users')
   async getUsers(@Query('o') orderByWhat: string) {
-    return await this.appService.getUsersRaw(orderByWhat === 'pt');
+    return await this.appService.getUsers(orderByWhat === 'pt');
   }
 
   @Get('cardinfo')
@@ -224,5 +224,9 @@ export class AppController {
   @Get('history')
   async getBattleHistory(@Query() query: any) {
     return await this.appService.getBattleHistory(query);
+  }
+  @Get('user')
+  async getUser(@Query('username') username: string) {
+    return await this.appService.getUser(username);
   }
 }
