@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection, InjectEntityManager } from '@nestjs/typeorm';
 import {
+  Brackets,
   Connection,
   EntityManager,
   LessThan,
   LessThanOrEqual,
   Like,
   MoreThanOrEqual,
+  SelectQueryBuilder,
 } from 'typeorm';
 import { UserInfo } from './entities/mycard/UserInfo';
 import Filter from 'bad-words-chinese';
@@ -622,7 +624,6 @@ export class AppService {
         if (!tryFirstWin) {
           firstWin = true;
         }
-        console.log(tryFirstWin);
       }
 
       const ptResult = EloUtility.getEloScore(userA.pt, userB.pt, sa, sb);
@@ -1050,6 +1051,20 @@ export class AppService {
     voteCountMap[voteId] = voteCountResult.voteCount;
   }
 
+  private async queryPageAndTotal<T>(
+    page_no: number,
+    page_num: number,
+    queryFunction: () => SelectQueryBuilder<T>,
+  ) {
+    // page_no 当前页数 page_num 每页展示数
+    // offset = (page_no - 1) * page_num
+    // select * from battle_history limit  5 offset 15;
+    const offset = (page_no - 1) * page_num;
+    const total = await queryFunction().getCount();
+    const data = await queryFunction().limit(page_num).offset(offset).getMany();
+    return { total, data };
+  }
+
   async getVotes(query: any) {
     const username = query.username;
     const type = query.type;
@@ -1064,21 +1079,22 @@ export class AppService {
     const from_date = query.from_date;
     const to_date = query.to_date;
 
-    // page_no 当前页数 page_num 每页展示数
-    // offset = (page_no - 1) * page_num
-    // select * from battle_history limit  5 offset 15;
     const page_no: number = query.page || 1;
     const page_num: number = query.page_num || 15;
     const offset = (page_no - 1) * page_num;
     const repo = this.mcdb.getRepository(Votes);
-    const voteQuery = repo.createQueryBuilder();
-    if (status !== undefined) {
-      voteQuery.where('status = :status', { status });
-    }
-    const total = await voteQuery.getCount();
-    voteQuery.orderBy('create_time', 'DESC');
-    voteQuery.limit(page_num).offset(offset);
-    const votes = await voteQuery.getMany();
+    const { total, data: votes } = await this.queryPageAndTotal(
+      page_no,
+      page_num,
+      () => {
+        const voteQuery = repo.createQueryBuilder();
+        if (status !== undefined) {
+          voteQuery.where('status = :status', { status });
+        }
+        voteQuery.orderBy('create_time', 'DESC');
+        return voteQuery;
+      },
+    );
     const optionCountMap: any = {};
     const voteCountMap: any = {};
     await Promise.all(
@@ -1372,5 +1388,50 @@ export class AppService {
       return true;
     });
     return code;
+  }
+  async getBattleHistory(query: any) {
+    const username: string = query.username;
+    const type = query.type;
+
+    let arena: string = null; //1 athletic 2 entertain
+
+    if (type === '1') {
+      arena = 'athletic';
+    }
+    if (type === '2') {
+      arena = 'entertain';
+    }
+
+    const from_date = query.from_date;
+    const to_date = query.to_date;
+
+    // page_no 当前页数 page_num 每页展示数
+    // offset = (page_no - 1) * page_num
+    // select * from battle_history limit  5 offset 15;
+    const page_no: number = query.page || 1;
+    const page_num: number = query.page_num || 15;
+    const ret = await this.queryPageAndTotal(page_no, page_num, () => {
+      const query = this.mcdb
+        .getRepository(BattleHistory)
+        .createQueryBuilder()
+        .where('1 = 1');
+      if (username) {
+        query.andWhere(
+          new Brackets((qb) => {
+            qb.where('usernamea = :usernamea', {
+              usernamea: username,
+            }).orWhere('usernameb = :usernameb', {
+              usernameb: username,
+            });
+          }),
+        );
+      }
+      if (arena) {
+        query.andWhere('type = :arena', { arena });
+      }
+      query.orderBy('start_time', 'DESC');
+      return query;
+    });
+    return ret;
   }
 }

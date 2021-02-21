@@ -221,4 +221,8 @@ export class AppController {
     const code = await this.appService.submitDeckInfo(body);
     res.status(code).json({ code });
   }
+  @Get('history')
+  async getBattleHistory(@Query() query: any) {
+    return await this.appService.getBattleHistory(query);
+  }
 }
