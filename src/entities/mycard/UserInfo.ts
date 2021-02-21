@@ -20,28 +20,28 @@ export class UserInfo {
   pt: number;
 
   @Column('integer', { name: 'entertain_win', default: 0 })
-  entertainWin: number;
+  entertain_win: number;
 
   @Column('integer', { name: 'entertain_lose', default: 0 })
-  entertainLose: number;
+  entertain_lose: number;
 
   @Column('integer', { name: 'entertain_draw', default: 0 })
-  entertainDraw: number;
+  entertain_draw: number;
 
   @Column('integer', { name: 'entertain_all', default: 0 })
-  entertainAll: number;
+  entertain_all: number;
 
   @Column('integer', { name: 'athletic_win', default: 0 })
-  athleticWin: number;
+  athletic_win: number;
 
   @Column('integer', { name: 'athletic_lose', default: 0 })
-  athleticLose: number;
+  athletic_lose: number;
 
   @Column('integer', { name: 'athletic_draw', default: 0 })
-  athleticDraw: number;
+  athletic_draw: number;
 
   @Column('integer', { name: 'athletic_all', default: 0 })
-  athleticAll: number;
+  athletic_all: number;
 
   @Column('integer', { name: 'id', nullable: true })
   id: number;

@@ -12,8 +12,8 @@ export class DeckInfo {
   content: string;
 
   @Column('timestamp without time zone', { name: 'start_time', nullable: true })
-  startTime: Date;
+  start_time: Date;
 
   @Column('timestamp without time zone', { name: 'end_time', nullable: true })
-  endTime: Date;
+  end_time: Date;
 }

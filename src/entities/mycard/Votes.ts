@@ -16,13 +16,13 @@ export class Votes {
     name: 'create_time',
     nullable: true,
   })
-  createTime: Date;
+  create_time: Date;
 
   @Column('timestamp without time zone', { name: 'start_time', nullable: true })
-  startTime: Date;
+  start_time: Date;
 
   @Column('timestamp without time zone', { name: 'end_time', nullable: true })
-  endTime: Date;
+  end_time: Date;
 
   @Column('boolean', { name: 'status', nullable: true, default: false })
   status: boolean;
@@ -30,7 +30,7 @@ export class Votes {
   @Column('boolean', {
     name: 'multiple',
     nullable: true,
-    default: 'false',
+    default: false,
   })
   multiple: boolean;
 

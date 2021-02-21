@@ -30,6 +30,7 @@ import { scheduleJob } from 'node-schedule';
 import { DeckInfo } from './entities/mycard/DeckInfo';
 import { DeckInfoHistory } from './entities/mycard/DeckInfoHistory';
 import { DeckDemo } from './entities/mycard/DeckDemo';
+import { Deck } from './entities/mycard/Deck';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -188,7 +189,7 @@ export class AppService {
       .createQueryBuilder('userInfo')
       .orderBy(orderByWhat, 'DESC')
       .limit(100)
-      .getRawMany();
+      .getMany();
   }
 
   async getCardInfo(id: number, lang: string) {
@@ -463,33 +464,38 @@ export class AppService {
       return null;
     }
   }
-  private async getSiteConfig(configKey: string) {
-    const configObject = await this.mcdb
-      .getRepository(SiteConfig)
-      .findOneOrFail({
-        select: ['configValue'],
-        where: [configKey],
-      });
-    return configObject.configValue;
+  async getSiteConfig(configKey: string) {
+    try {
+      const configObject = await this.mcdb
+        .getRepository(SiteConfig)
+        .findOneOrFail({
+          select: ['configValue'],
+          where: [configKey],
+        });
+      return configObject.configValue;
+    } catch (e) {
+      this.log.warn(`Failed to get config ${configKey}: ${e.toString()}`);
+      return null;
+    }
   }
-  private async updateSiteConfig(configKey: string, configValue: string) {
-    await this.mcdb
-      .getRepository(SiteConfig)
-      .update({ configKey }, { configValue });
+  async updateSiteConfig(configKey: string, configValue: string) {
+    try {
+      await this.mcdb
+        .getRepository(SiteConfig)
+        .update({ configKey }, { configValue });
+      return 200;
+    } catch (e) {
+      this.log.warn(
+        `Failed to update config ${configKey} to ${configValue}: ${e.toString()}`,
+      );
+      return 500;
+    }
   }
 
   async updateActivity(body: any) {
     const { start, end, max, name } = body;
     const activityStr = JSON.stringify({ start, end, max, name });
-    try {
-      await this.updateSiteConfig('activity', activityStr);
-      return { code: 200 };
-    } catch (e) {
-      this.log.warn(
-        `Failed to update activity to ${activityStr}: ${e.toString()}`,
-      );
-      return { code: 500 };
-    }
+    return this.updateSiteConfig('activity', activityStr);
   }
 
   private async findOrCreateUser(username: string) {
@@ -779,10 +785,10 @@ export class AppService {
               .set({
                 exp: expResult.expA,
                 pt: ptResult.ptA,
-                athleticWin: () => `athletic_win + ${paramA.athletic_win}`,
-                athleticLose: () => `athletic_lose + ${paramA.athletic_win}`,
-                athleticDraw: () => `athletic_draw + ${paramA.athletic_win}`,
-                athleticAll: () => `athletic_all + ${paramA.athletic_win}`,
+                athletic_win: () => `athletic_win + ${paramA.athletic_win}`,
+                athletic_lose: () => `athletic_lose + ${paramA.athletic_lose}`,
+                athletic_draw: () => `athletic_draw + ${paramA.athletic_draw}`,
+                athletic_all: () => `athletic_all + ${paramA.athletic_all}`,
               })
               .where('username = :username', { username: userA.username })
               .execute(),
@@ -792,10 +798,10 @@ export class AppService {
               .set({
                 exp: expResult.expB,
                 pt: ptResult.ptB,
-                athleticWin: () => `athletic_win + ${paramB.athletic_win}`,
-                athleticLose: () => `athletic_lose + ${paramB.athletic_win}`,
-                athleticDraw: () => `athletic_draw + ${paramB.athletic_win}`,
-                athleticAll: () => `athletic_all + ${paramB.athletic_win}`,
+                athletic_win: () => `athletic_win + ${paramB.athletic_win}`,
+                athletic_lose: () => `athletic_lose + ${paramB.athletic_lose}`,
+                athletic_draw: () => `athletic_draw + ${paramB.athletic_draw}`,
+                athletic_all: () => `athletic_all + ${paramB.athletic_all}`,
               })
               .where('username = :username', { username: userB.username })
               .execute(),
@@ -857,10 +863,12 @@ export class AppService {
               .update(UserInfo)
               .set({
                 exp: expResult.expA,
-                entertainWin: () => `entertain_win + ${paramA.entertain_win}`,
-                entertainLose: () => `entertain_lose + ${paramA.entertain_win}`,
-                entertainDraw: () => `entertain_draw + ${paramA.entertain_win}`,
-                entertainAll: () => `entertain_all + ${paramA.entertain_win}`,
+                entertain_win: () => `entertain_win + ${paramA.entertain_win}`,
+                entertain_lose: () =>
+                  `entertain_lose + ${paramA.entertain_lose}`,
+                entertain_draw: () =>
+                  `entertain_draw + ${paramA.entertain_draw}`,
+                entertain_all: () => `entertain_all + ${paramA.entertain_all}`,
               })
               .where('username = :username', { username: userA.username })
               .execute(),
@@ -869,10 +877,12 @@ export class AppService {
               .update(UserInfo)
               .set({
                 exp: expResult.expB,
-                entertainWin: () => `entertain_win + ${paramB.entertain_win}`,
-                entertainLose: () => `entertain_lose + ${paramB.entertain_win}`,
-                entertainDraw: () => `entertain_draw + ${paramB.entertain_win}`,
-                entertainAll: () => `entertain_all + ${paramB.entertain_win}`,
+                entertain_win: () => `entertain_win + ${paramB.entertain_win}`,
+                entertain_lose: () =>
+                  `entertain_lose + ${paramB.entertain_lose}`,
+                entertain_draw: () =>
+                  `entertain_draw + ${paramB.entertain_draw}`,
+                entertain_all: () => `entertain_all + ${paramB.entertain_all}`,
               })
               .where('username = :username', { username: userB.username })
               .execute(),
@@ -1060,16 +1070,13 @@ export class AppService {
     const page_num: number = query.page_num || 15;
     const offset = (page_no - 1) * page_num;
     const repo = this.mcdb.getRepository(Votes);
-    const countQuery = repo.createQueryBuilder();
-    if (status !== undefined) {
-      countQuery.where('status = :status', { status });
-    }
-    const total = await countQuery.getCount();
     const voteQuery = repo.createQueryBuilder();
     if (status !== undefined) {
       voteQuery.where('status = :status', { status });
     }
-    voteQuery.orderBy('create_time', 'DESC').limit(page_num).offset(offset);
+    const total = await voteQuery.getCount();
+    voteQuery.orderBy('create_time', 'DESC');
+    voteQuery.limit(page_num).offset(offset);
     const votes = await voteQuery.getMany();
     const optionCountMap: any = {};
     const voteCountMap: any = {};
@@ -1090,8 +1097,8 @@ export class AppService {
     const now = moment().toDate();
     const allVotes = await this.mcdb.getRepository(Votes).find({
       status: true,
-      startTime: LessThanOrEqual(now),
-      endTime: MoreThanOrEqual(now),
+      start_time: LessThanOrEqual(now),
+      end_time: MoreThanOrEqual(now),
     });
     const votedIds = (
       await this.mcdb.getRepository(VoteResult).find({
@@ -1123,14 +1130,14 @@ export class AppService {
         .where('name = :name', { name })
         .andWhere('id = :id', { id: parseInt(version) })
         .orderBy('start_time', 'DESC')
-        .getRawOne();
+        .getOne();
     } else {
       deck = await this.mcdb
         .getRepository(DeckInfo)
         .createQueryBuilder()
         .where('name like :name', { name: `%${name}%` })
         .orderBy('start_time', 'DESC')
-        .getRawOne();
+        .getOne();
     }
     if (!deck) {
       return {
@@ -1143,15 +1150,17 @@ export class AppService {
       .createQueryBuilder()
       .where('name = :name', { name: resName })
       .orderBy('start_time', 'DESC')
-      .getRawMany();
+      .getMany();
     const demo = (
       await this.mcdb
         .getRepository(DeckDemo)
         .createQueryBuilder()
         .where('name = :name', { name: resName })
         .orderBy('create_time', 'DESC')
-        .getRawMany()
+        .getMany()
     ).map((row) => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       row.create_time = moment(row.create_time).format('YYYY-MM-DD');
       return row;
     });
@@ -1286,5 +1295,81 @@ export class AppService {
       extra: extraCardArr,
       side: sideCardArr,
     };
+  }
+
+  async submitDeckDemo(body: any) {
+    const author: string = body.user;
+    const title: string = body.title;
+    const name: string = body.name;
+    const img_url: string = body.url;
+    const file: string = body.file || '';
+    const now = moment().toDate();
+    const deckDemo = new DeckDemo();
+    deckDemo.author = author;
+    deckDemo.title = title;
+    deckDemo.url = img_url;
+    deckDemo.name = name;
+    deckDemo.file = file;
+    deckDemo.create_time = now;
+    try {
+      await this.mcdb.getRepository(DeckDemo).save(deckDemo);
+      return 200;
+    } catch (e) {
+      this.log.error(`Failed submitting deck demo: ${e.toString()}`);
+      return 500;
+    }
+  }
+
+  async submitDeckInfo(body: any) {
+    const author = body.user;
+    const title = body.title;
+    const name = body.name;
+    const desc = body.desc;
+    const strategy = body.strategy;
+    const reference = body.reference;
+    const img_url = body.url;
+
+    const isNew = body.isNew;
+
+    const now = moment().toDate();
+
+    const content = {
+      author: this.chineseDirtyFilter.clean(author),
+      title: this.chineseDirtyFilter.clean(title),
+      desc: this.chineseDirtyFilter.clean(desc),
+      strategy: this.chineseDirtyFilter.clean(strategy),
+      reference: this.chineseDirtyFilter.clean(reference),
+      url: img_url,
+    };
+
+    const contentStr = JSON.stringify(content);
+
+    let code = 200;
+    await this.transaction(this.mcdb, async (db) => {
+      try {
+        if (isNew === 'true') {
+          const deckInfo = new DeckInfo();
+          deckInfo.name = name;
+          deckInfo.content = contentStr;
+          deckInfo.start_time = now;
+          await db.getRepository(DeckInfo).save(deckInfo);
+        } else {
+          await db
+            .getRepository(DeckInfo)
+            .update({ name }, { content: contentStr, end_time: now });
+        }
+        const deckInfoHistory = new DeckInfoHistory();
+        deckInfoHistory.name = name;
+        deckInfoHistory.content = contentStr;
+        deckInfoHistory.end_time = now;
+        await db.getRepository(DeckInfoHistory).save(deckInfoHistory);
+      } catch (e) {
+        this.log.error(`Failed to submit deck info ${name}: ${e.toString()}`);
+        code = 500;
+        return false;
+      }
+      return true;
+    });
+    return code;
   }
 }

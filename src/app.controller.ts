@@ -80,8 +80,42 @@ export class AppController {
   }
 
   @Post('activity')
-  async updateActivity(@Body() body: any) {
-    return await this.appService.updateActivity(body);
+  async updateActivity(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.updateActivity(body);
+    res.status(code).json({ code });
+  }
+
+  @Get('label')
+  async getLabel(@Res() res: express.Response) {
+    const value = await this.appService.getSiteConfig('label');
+    if (value) {
+      res.status(200).json({
+        code: 200,
+        text: value,
+      });
+    } else {
+      res.status(500).json({
+        code: 500,
+      });
+    }
+  }
+
+  @Post('label')
+  async updateLabel(
+    @Body('labelone') value: string,
+    @Res() res: express.Response,
+  ) {
+    const code = await this.appService.updateSiteConfig('label', value);
+    res.status(code).json({ code });
+  }
+
+  @Post('adSwitchChange')
+  async updateAdvertisementSetting(
+    @Body('status') value: string,
+    @Res() res: express.Response,
+  ) {
+    const code = await this.appService.updateSiteConfig('auto_close_ad', value);
+    res.status(code).json({ code });
   }
 
   @Post('votes')
@@ -176,5 +210,15 @@ export class AppController {
       res.status(404).end('File not found.');
     }
     res.json({ deck });
+  }
+  @Post('deckdemo')
+  async submitDeckDemo(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.submitDeckDemo(body);
+    res.status(code).json({ code });
+  }
+  @Post('deckinfo')
+  async submitDeckInfo(@Body() body: any, @Res() res: express.Response) {
+    const code = await this.appService.submitDeckInfo(body);
+    res.status(code).json({ code });
   }
 }

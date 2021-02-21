@@ -24,5 +24,5 @@ export class DeckDemo {
     name: 'create_time',
     nullable: true,
   })
-  createTime: Date;
+  create_time: Date;
 }
