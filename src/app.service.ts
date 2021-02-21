@@ -778,6 +778,28 @@ export class AppService {
       battleHistory.isfirstwin = firstWin;
       battleHistory.decka = deckA;
       battleHistory.deckb = deckB;
+      // 高分赛，懒得弄Analytics于是塞这了
+      if (config.analyzerHost && userA.pt >= 1400 && userB.pt >= 1400) {
+        try {
+          await axios.post(
+            config.analyzerHost,
+            qs.stringify({
+              usernameA: usernameA,
+              usernameB: usernameB,
+              userscoreA: userscoreA,
+              userscoreB: userscoreB,
+              userdeckA: body.userdeckA,
+              userdeckB: body.userdeckB,
+              first: body.first,
+              arena: 'athletic-elite',
+            }),
+          );
+        } catch (e) {
+          this.log.error(
+            `Failed to send elite match to analytics: ${e.toString()}`,
+          );
+        }
+      }
       await this.transaction(this.mcdb, async (db) => {
         const repo = db.getRepository(BattleHistory);
         try {
