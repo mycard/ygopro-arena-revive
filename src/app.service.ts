@@ -586,6 +586,7 @@ export class AppService {
 
     // athletic = 竞技  entertain = 娱乐
     const repo = this.mcdb.getRepository(BattleHistory);
+    let returnMessage: string = null;
     if (arena === 'athletic') {
       // select count(*) from battle_history where (usernameA = '爱吉' OR usernameB = '爱吉') and start_time > date '2017-02-09'
       // 日首胜  每日0点开始计算  日首胜的话是额外增加固定4DP
@@ -780,6 +781,9 @@ export class AppService {
       battleHistory.deckb = deckB;
       // 高分赛，懒得弄Analytics于是塞这了
       if (config.analyzerHost && userA.pt >= 1400 && userB.pt >= 1400) {
+        this.log.log(
+          `Elite match ${usernameA} ${userA.pt} ${userscoreA} vs ${usernameB} ${userB.pt} ${userscoreB}`,
+        );
         try {
           await axios.post(
             config.analyzerHost,
@@ -796,7 +800,11 @@ export class AppService {
           );
         } catch (e) {
           this.log.error(
-            `Failed to send elite match to analytics: ${e.toString()}`,
+            `Failed to send elite match ${usernameA} ${
+              userA.pt
+            } ${userscoreA} vs ${usernameB} ${
+              userB.pt
+            } ${userscoreB} to analytics: ${e.toString()}`,
           );
         }
       }
@@ -835,6 +843,7 @@ export class AppService {
           return true;
         } catch (e) {
           this.log.error(`Failed to report score: ${e.toString()}`);
+          returnMessage = 'Failed to report score';
           return false;
         }
       });
@@ -916,12 +925,13 @@ export class AppService {
           return true;
         } catch (e) {
           this.log.error(`Failed to report score: ${e.toString()}`);
+          returnMessage = 'Failed to report score';
           return false;
         }
       });
     }
 
-    return null;
+    return returnMessage;
   }
 
   async updateVotes(body: any) {

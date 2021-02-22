@@ -41,7 +41,7 @@ export class AppController {
         msg: message,
       });
     } else {
-      res.json({
+      res.status(200).json({
         msg: 'success',
       });
     }
