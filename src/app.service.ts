@@ -878,7 +878,7 @@ export class AppService {
       battleHistory.expa_ex = userA.exp;
       battleHistory.expb_ex = userB.exp;
       battleHistory.pta = userA.pt;
-      battleHistory.ptb = userA.pt;
+      battleHistory.ptb = userB.pt;
       battleHistory.pta_ex = userA.pt;
       battleHistory.ptb_ex = userB.pt;
       battleHistory.type = arena;
