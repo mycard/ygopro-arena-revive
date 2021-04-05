@@ -1528,12 +1528,24 @@ export class AppService {
       ).toFixed(2);
     }
     resultData['athletic_wl_ratio'] = athletic_wl_ratio;
-    resultData.arena_rank = await this.mcdb.getRepository(UserInfo).count({
-      pt: MoreThanOrEqual(user.pt),
-    });
-    resultData.exp_rank = await this.mcdb.getRepository(UserInfo).count({
-      exp: MoreThanOrEqual(user.exp),
-    });
+    const { arenaRank } = await this.mcdb.manager
+      .createQueryBuilder()
+      .select('count(*)', 'arenaRank')
+      .from(UserInfo, 'tg')
+      .addFrom(UserInfo, 'rk')
+      .where('tg.username = :username', { username })
+      .andWhere('rk.pt >= tg.pt')
+      .getRawOne();
+    resultData.arena_rank = parseInt(arenaRank);
+    const { expRank } = await this.mcdb.manager
+      .createQueryBuilder()
+      .select('count(*)', 'expRank')
+      .from(UserInfo, 'tg')
+      .addFrom(UserInfo, 'rk')
+      .where('tg.username = :username', { username })
+      .andWhere('rk.exp >= tg.exp')
+      .getRawOne();
+    resultData.exp_rank = parseInt(expRank);
     return resultData;
   }
   async updateAds(body: any) {
