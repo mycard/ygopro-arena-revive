@@ -1384,7 +1384,7 @@ export class AppService {
 
     const isNew = body.isNew;
 
-    const now = moment().toDate();
+    const now = new Date(moment().format('YYYY-MM-DD HH:mm'));
 
     const content = {
       author: this.chineseDirtyFilter.clean(author),
