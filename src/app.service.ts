@@ -1384,7 +1384,7 @@ export class AppService {
 
     const isNew = body.isNew;
 
-    const now = new Date(moment().format('YYYY-MM-DD HH:mm'));
+    const now = moment().toDate();
 
     const content = {
       author: this.chineseDirtyFilter.clean(author),
@@ -1414,7 +1414,7 @@ export class AppService {
         const deckInfoHistory = new DeckInfoHistory();
         deckInfoHistory.name = name;
         deckInfoHistory.content = contentStr;
-        deckInfoHistory.end_time = now;
+        deckInfoHistory.start_time = now;
         this.log.log(
           await db.getRepository(DeckInfoHistory).save(deckInfoHistory),
         );
