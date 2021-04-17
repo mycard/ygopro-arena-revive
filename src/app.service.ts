@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectEntityManager } from '@nestjs/typeorm';
 import {
   Brackets,
@@ -35,6 +35,7 @@ import { DeckDemo } from './entities/mycard/DeckDemo';
 import { Deck } from './entities/mycard/Deck';
 import { Ads } from './entities/mycard/Ads';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { DeckInfoOrHistory } from './entities/mycard/DeckInfoOrHistory';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -1173,10 +1174,10 @@ export class AppService {
   async getDeckInfo(query: any) {
     const name: string = query.name;
     const version = query.version;
-    let deck: any;
+    let deck: DeckInfoOrHistory;
     if (version) {
       deck = await this.mcdb
-        .getRepository(DeckInfo)
+        .getRepository(DeckInfoHistory)
         .createQueryBuilder()
         .where('name = :name', { name })
         .andWhere('id = :id', { id: parseInt(version) })
@@ -1191,9 +1192,10 @@ export class AppService {
         .getOne();
     }
     if (!deck) {
-      return {
+      throw new NotFoundException({
         code: 404,
-      };
+        message: 'deck not found.',
+      });
     }
     const resName = deck.name;
     const history = await this.mcdb
@@ -1413,7 +1415,9 @@ export class AppService {
         deckInfoHistory.name = name;
         deckInfoHistory.content = contentStr;
         deckInfoHistory.end_time = now;
-        await db.getRepository(DeckInfoHistory).save(deckInfoHistory);
+        this.log.log(
+          await db.getRepository(DeckInfoHistory).save(deckInfoHistory),
+        );
       } catch (e) {
         this.log.error(`Failed to submit deck info ${name}: ${e.toString()}`);
         code = 500;

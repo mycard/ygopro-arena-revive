@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { DeckInfoOrHistory } from './DeckInfoOrHistory';
 
 @Entity('deck_info', { schema: 'public' })
-export class DeckInfo {
+export class DeckInfo implements DeckInfoOrHistory {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
 
