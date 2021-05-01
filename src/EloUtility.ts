@@ -1,12 +1,22 @@
 export class EloUtility {
+  static getSqlString(num: number) {
+    if (num === 0 || !num) {
+      return '';
+    } else if (num > 0) {
+      return `+ ${num}`;
+    } else {
+      return `- ${-num}`;
+    }
+  }
+
   static getExpScore(
     expA: number,
     expB: number,
     scoreA: number,
     scoreB: number,
   ) {
-    let rExpA = expA,
-      rExpB = expB;
+    let rExpA = 0,
+      rExpB = 0;
     if (scoreA === scoreB) {
       rExpA += 0.5;
       rExpB += 0.5;
@@ -22,7 +32,7 @@ export class EloUtility {
   static getEloScore(rA: number, rB: number, sA: number, sB: number) {
     //17.07.18 增加规则，平局不加分.
     if (sA === sB) {
-      return { ptA: rA, ptB: rB };
+      return { ptA: 0, ptB: 0 };
     }
 
     const k = 24;
@@ -52,7 +62,7 @@ export class EloUtility {
       diffA = -15;
     }
 
-    const rrA = rA + diffA;
+    //const rrA = rA + diffA;
 
     let diffB = k * (sB - eB);
 
@@ -77,7 +87,7 @@ export class EloUtility {
       diffB = -15;
     }
 
-    const rrB = rB + diffB;
+    //const rrB = rB + diffB;
 
     //console.log(diffA, diffB);
 
@@ -91,6 +101,6 @@ export class EloUtility {
     //     rrB = rB - 8;
     // }
 
-    return { ptA: rrA, ptB: rrB };
+    return { ptA: diffA, ptB: diffB };
   }
 }

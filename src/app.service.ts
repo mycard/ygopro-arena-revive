@@ -643,17 +643,17 @@ export class AppService {
       if (userscoreA === -5 || userscoreB === -5) {
         pre_exit = true;
         firstWin = false;
-        ptResult.ptA = userA.pt;
-        ptResult.ptB = userB.pt;
+        ptResult.ptA = 0;
+        ptResult.ptB = 0;
         if (userscoreA === -9) {
-          ptResult.ptA = userA.pt - 2;
+          ptResult.ptA = -2;
           this.log.compatLog(
             usernameA,
             '开局退房',
             moment(start).format('YYYY-MM-DD HH:mm'),
           );
         } else if (userscoreB === -9) {
-          ptResult.ptB = userB.pt - 2;
+          ptResult.ptB = -2;
           this.log.compatLog(
             usernameB,
             '开局退房',
@@ -666,8 +666,8 @@ export class AppService {
       //按加减8或16处理：高分赢低分 高分加8低分减8，低分赢高分，低分加16，高分减16.
       if (!pre_exit && userA.pt - userB.pt > 137) {
         if (winner === usernameA) {
-          ptResult.ptA = userA.pt + 8;
-          ptResult.ptB = userB.pt - 8;
+          ptResult.ptA = +8;
+          ptResult.ptB = -8;
           this.log.compatLog(
             userA.pt,
             userB.pt,
@@ -677,8 +677,8 @@ export class AppService {
         }
 
         if (winner === usernameB) {
-          ptResult.ptA = userA.pt - 15;
-          ptResult.ptB = userB.pt + 16;
+          ptResult.ptA = -15;
+          ptResult.ptB = +16;
           this.log.compatLog(
             userA.pt,
             userB.pt,
@@ -690,8 +690,8 @@ export class AppService {
 
       if (!pre_exit && userB.pt - userA.pt > 137) {
         if (winner === usernameA) {
-          ptResult.ptA = userA.pt + 16;
-          ptResult.ptB = userB.pt - 15;
+          ptResult.ptA = +16;
+          ptResult.ptB = -15;
           this.log.compatLog(
             userA.pt,
             userB.pt,
@@ -701,8 +701,8 @@ export class AppService {
         }
 
         if (winner === usernameB) {
-          ptResult.ptA = userA.pt - 8;
-          ptResult.ptB = userB.pt + 8;
+          ptResult.ptA = -8;
+          ptResult.ptB = +8;
           this.log.compatLog(
             userA.pt,
             userB.pt,
@@ -716,7 +716,7 @@ export class AppService {
       const isLess3Min = moment(start).add(1, 'm').isAfter(moment(end));
       if (!pre_exit && isLess3Min) {
         if (winner === usernameA) {
-          ptResult.ptA = userA.pt;
+          ptResult.ptA = 0;
           this.log.compatLog(
             usernameA,
             '当局有人存在早退，胜利不加分',
@@ -724,7 +724,7 @@ export class AppService {
           );
         }
         if (winner === usernameB) {
-          ptResult.ptB = userB.pt;
+          ptResult.ptB = 0;
           this.log.compatLog(
             usernameB,
             '当局有人存在早退，胜利不加分',
@@ -765,12 +765,12 @@ export class AppService {
       battleHistory.usernameb = userB.username;
       battleHistory.userscorea = userscoreA;
       battleHistory.userscoreb = userscoreB;
-      battleHistory.expa = expResult.expA;
-      battleHistory.expb = expResult.expB;
+      battleHistory.expa = expResult.expA + userA.exp;
+      battleHistory.expb = expResult.expB + userB.exp;
       battleHistory.expa_ex = userA.exp;
       battleHistory.expb_ex = userB.exp;
-      battleHistory.pta = ptResult.ptA;
-      battleHistory.ptb = ptResult.ptB;
+      battleHistory.pta = ptResult.ptA + userA.pt;
+      battleHistory.ptb = ptResult.ptB + userB.pt;
       battleHistory.pta_ex = userA.pt;
       battleHistory.ptb_ex = userB.pt;
       battleHistory.type = arena;
@@ -818,8 +818,8 @@ export class AppService {
               .createQueryBuilder()
               .update(UserInfo)
               .set({
-                exp: expResult.expA,
-                pt: ptResult.ptA,
+                exp: () => `exp ${EloUtility.getSqlString(expResult.expA)}`,
+                pt: () => `pt ${EloUtility.getSqlString(ptResult.ptA)}`,
                 athletic_win: () => `athletic_win + ${paramA.athletic_win}`,
                 athletic_lose: () => `athletic_lose + ${paramA.athletic_lose}`,
                 athletic_draw: () => `athletic_draw + ${paramA.athletic_draw}`,
@@ -831,8 +831,8 @@ export class AppService {
               .createQueryBuilder()
               .update(UserInfo)
               .set({
-                exp: expResult.expB,
-                pt: ptResult.ptB,
+                exp: () => `exp ${EloUtility.getSqlString(expResult.expB)}`,
+                pt: () => `pt ${EloUtility.getSqlString(ptResult.ptB)}`,
                 athletic_win: () => `athletic_win + ${paramB.athletic_win}`,
                 athletic_lose: () => `athletic_lose + ${paramB.athletic_lose}`,
                 athletic_draw: () => `athletic_draw + ${paramB.athletic_draw}`,
@@ -874,8 +874,8 @@ export class AppService {
       battleHistory.usernameb = userB.username;
       battleHistory.userscorea = userscoreA;
       battleHistory.userscoreb = userscoreB;
-      battleHistory.expa = expResult.expA;
-      battleHistory.expb = expResult.expB;
+      battleHistory.expa = expResult.expA + userA.exp;
+      battleHistory.expb = expResult.expB + userB.exp;
       battleHistory.expa_ex = userA.exp;
       battleHistory.expb_ex = userB.exp;
       battleHistory.pta = userA.pt;
@@ -898,7 +898,7 @@ export class AppService {
               .createQueryBuilder()
               .update(UserInfo)
               .set({
-                exp: expResult.expA,
+                exp: () => `exp ${EloUtility.getSqlString(expResult.expA)}`,
                 entertain_win: () => `entertain_win + ${paramA.entertain_win}`,
                 entertain_lose: () =>
                   `entertain_lose + ${paramA.entertain_lose}`,
@@ -912,7 +912,7 @@ export class AppService {
               .createQueryBuilder()
               .update(UserInfo)
               .set({
-                exp: expResult.expB,
+                exp: () => `exp ${EloUtility.getSqlString(expResult.expB)}`,
                 entertain_win: () => `entertain_win + ${paramB.entertain_win}`,
                 entertain_lose: () =>
                   `entertain_lose + ${paramB.entertain_lose}`,
