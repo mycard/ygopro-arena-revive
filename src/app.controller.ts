@@ -1,13 +1,19 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  HttpException,
+  InternalServerErrorException,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Req,
   Res,
+  UploadedFile,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -15,36 +21,37 @@ import express from 'express';
 import { AppService } from './app.service';
 import { UserInfo } from './entities/mycard/UserInfo';
 import { config } from './config';
-import {
-  AnyFilesInterceptor,
-  FilesInterceptor,
-} from '@nestjs/platform-express';
-import { IncomingForm } from 'formidable';
+import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { HttpResponseService } from './http-response/http-response.service';
+import { CodeResponseDto } from './dto/CodeResponse.dto';
+import multer from 'multer';
+import cryptoRandomString from 'crypto-random-string';
+import { join } from 'path';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { FileUploadDto } from './dto/FileUploadDto';
 
 @Controller('api')
+@ApiTags('arena')
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly httpResponseService: HttpResponseService,
+  ) {}
 
   @Post('score')
-  async postScore(
-    @Body() body: any,
-    @Body('accesskey') accessKey,
-    @Res() res: express.Response,
-  ) {
+  async postScore(@Body() body: any, @Body('accesskey') accessKey) {
     if (accessKey !== config.accessKey) {
-      return res.status(403).json({
+      throw new ForbiddenException({
         msg: 'accesskey error',
       });
     }
     const message = await this.appService.postScore(body);
     if (message) {
-      res.status(404).json({
-        msg: message,
-      });
+      throw new NotFoundException({ msg: message });
     } else {
-      res.status(200).json({
+      return {
         msg: 'success',
-      });
+      };
     }
   }
 
@@ -54,22 +61,16 @@ export class AppController {
   }
 
   @Get('cardinfo')
-  async getCardInfo(
-    @Query('lang') language: string,
-    @Query('id') id: string,
-    @Res() res: express.Response,
-  ) {
+  async getCardInfo(@Query('lang') language: string, @Query('id') id: string) {
     const cardId = parseInt(id);
     if (!cardId) {
-      res.status(404).end('card id is required!');
-      return;
+      throw new BadRequestException('card id is required!');
     }
     const result = await this.appService.getCardInfo(cardId, language);
     if (!result) {
-      res.status(404).end('card info not found!');
-      return;
+      throw new NotFoundException('card not found.');
     }
-    res.json(result);
+    return result;
   }
 
   @Get('report')
@@ -81,60 +82,58 @@ export class AppController {
   }
 
   @Post('activity')
-  async updateActivity(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.updateActivity(body);
-    res.status(code).json({ code });
+  async updateActivity(@Body() body: any): Promise<CodeResponseDto> {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateActivity(body),
+    );
   }
 
   @Get('label')
-  async getLabel(@Res() res: express.Response) {
+  async getLabel() {
     const value = await this.appService.getSiteConfig('label');
     if (value != null) {
-      res.status(200).json({
+      return {
         code: 200,
         text: value,
-      });
+      };
     } else {
-      res.status(500).json({
-        code: 500,
-      });
+      throw new InternalServerErrorException(new CodeResponseDto(500));
     }
   }
 
   @Post('label')
-  async updateLabel(
-    @Body('labelone') value: string,
-    @Res() res: express.Response,
-  ) {
-    const code = await this.appService.updateSiteConfig('label', value);
-    res.status(code).json({ code });
+  async updateLabel(@Body('labelone') value: string) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateSiteConfig('label', value),
+    );
   }
 
   @Post('adSwitchChange')
-  async updateAdvertisementSetting(
-    @Body('status') value: string,
-    @Res() res: express.Response,
-  ) {
-    const code = await this.appService.updateSiteConfig('auto_close_ad', value);
-    res.status(code).json({ code });
+  async updateAdvertisementSetting(@Body('status') value: string) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateSiteConfig('auto_close_ad', value),
+    );
   }
 
   @Post('votes')
-  async updateVotes(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.updateVotes(body);
-    res.status(code).json({ code });
+  async updateVotes(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateVotes(body),
+    );
   }
 
   @Post('voteStatus')
-  async updateVoteStatus(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.updateVoteStatus(body);
-    res.status(code).json({ code });
+  async updateVoteStatus(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateVoteStatus(body),
+    );
   }
 
   @Post('submitVote')
-  async submitVote(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.submitVote(body);
-    res.status(code).json({ code });
+  async submitVote(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.submitVote(body),
+    );
   }
 
   @Get('votes')
@@ -161,65 +160,64 @@ export class AppController {
     return await this.appService.getDeckInfo(query);
   }
   @Post('upload')
-  uploadFile(@Req() req: express.Request, @Res() res: express.Response) {
-    const form = new IncomingForm();
-    form.encoding = 'utf-8';
-    form.uploadDir = 'upload/';
-    form.keepExtensions = true;
-    form.maxFieldsSize = 2 * 1024 * 1024;
-    form.parse(req, function (err, fields, files) {
-      if (err) {
-        console.log(err);
-        return res.status(500).send('upload image fail!');
-      }
-
-      const response = {
-        code: 200,
-      };
-      if (err) {
-        response.code = 500;
-      } else {
-        response.code = 200;
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        response.path = files.file.path;
-      }
-
-      res.status(response.code).json(response);
-    });
-  }
-  @Get('download/:id')
-  downloadFile(@Param('id') filename: string, @Res() res: express.Response) {
-    if (!filename) {
-      res.status(400).end('Missing filename.');
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: '要上传的文件',
+    type: FileUploadDto,
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, join(__dirname, '..', 'upload'));
+        },
+        filename: (req, file, cb) => {
+          const customFileName = cryptoRandomString({
+              length: 20,
+              type: 'alphanumeric',
+            }),
+            fileExtension = file.originalname.split('.')[1]; // get file extension from original file name
+          cb(null, customFileName + '.' + fileExtension);
+        },
+      }),
+      limits: {
+        fileSize: 2 * 1024 * 1024,
+      },
+      preservePath: true,
+    }),
+  )
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new InternalServerErrorException(new CodeResponseDto(500));
     }
-    const filepath = `upload/${filename}`;
-    res.download(filepath, filename);
+    return {
+      code: 200,
+      path: file.path,
+    };
   }
 
   @Get('deckdata/:id')
-  async getDeckData(
-    @Param('id') filename: string,
-    @Res() res: express.Response,
-  ) {
+  async getDeckData(@Param('id') filename: string) {
     if (!filename) {
-      res.status(400).end('Missing filename.');
+      throw new BadRequestException('Missing filename.');
     }
     const deck = await this.appService.getDeckData(filename);
     if (!deck) {
-      res.status(404).end('File not found.');
+      throw new NotFoundException('File not found.');
     }
-    res.json({ deck });
+    return { deck };
   }
   @Post('deckdemo')
-  async submitDeckDemo(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.submitDeckDemo(body);
-    res.status(code).json({ code });
+  async submitDeckDemo(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.submitDeckDemo(body),
+    );
   }
   @Post('deckinfo')
-  async submitDeckInfo(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.submitDeckInfo(body);
-    res.status(code).json({ code });
+  async submitDeckInfo(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.submitDeckInfo(body),
+    );
   }
   @Get('history')
   async getBattleHistory(@Query() query: any) {
@@ -230,9 +228,10 @@ export class AppController {
     return await this.appService.getUser(username);
   }
   @Post('ads')
-  async updateAds(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.updateAds(body);
-    res.status(code).json({ code });
+  async updateAds(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateAds(body),
+    );
   }
   @Get('ads')
   async getAds(@Query() query: any) {
@@ -243,27 +242,22 @@ export class AppController {
     return await this.appService.getRandomAd(type);
   }
   @Post('adsStatus')
-  async updateAdsStatus(@Body() body: any, @Res() res: express.Response) {
-    const code = await this.appService.updateAdsStatus(body);
-    res.status(code).json({ code });
+  async updateAdsStatus(@Body() body: any) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.updateAdsStatus(body),
+    );
   }
   @Post('adClick')
-  async adClick(@Body('id') id: string, @Res() res: express.Response) {
-    if (!id) {
-      res.status(400).json({ code: 400 });
-      return;
-    }
-    const code = await this.appService.increaseAds(parseInt(id), 'clk');
-    res.status(code).json({ code });
+  async adClick(@Body('id', ParseIntPipe) id: number) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.increaseAds(id, 'clk'),
+    );
   }
   @Post('adImpl')
-  async adImpl(@Body('id') id: string, @Res() res: express.Response) {
-    if (!id) {
-      res.status(400).json({ code: 400 });
-      return;
-    }
-    const code = await this.appService.increaseAds(parseInt(id), 'impl');
-    res.status(code).json({ code });
+  async adImpl(@Body('id', ParseIntPipe) id: number) {
+    return this.httpResponseService.handlePostCodeResponse(
+      this.appService.increaseAds(id, 'impl'),
+    );
   }
   @Get('firstwin')
   async getFirstWinActivity(@Query('username') username: string) {

@@ -46,6 +46,11 @@ import { DeckSeason } from './entities/mycard/DeckSeason';
 import { DeckWeek } from './entities/mycard/DeckWeek';
 import { UserInfo } from './entities/mycard/UserInfo';
 import { AppLogger } from './app.logger';
+import { HttpResponseService } from './http-response/http-response.service';
+import { EloService } from './elo/elo.service';
+import { CardInfoService } from './card-info/card-info.service';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 const ygoproEntities = [YGOProDatabaseDatas, YGOProDatabaseTexts];
 const mycardEntities = [
@@ -93,6 +98,10 @@ const mycardEntities = [
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'upload'),
+      serveRoot: '/api/download',
+    }),
     TypeOrmModule.forRoot({
       synchronize: false,
       type: 'sqlite',
@@ -120,6 +129,12 @@ const mycardEntities = [
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, AppLogger],
+  providers: [
+    AppService,
+    AppLogger,
+    HttpResponseService,
+    EloService,
+    CardInfoService,
+  ],
 })
 export class AppModule {}

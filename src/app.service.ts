@@ -15,7 +15,6 @@ import Filter from 'bad-words-chinese';
 import { ChineseDirtyWords } from './dirtyWordsChinese';
 import { YGOProDatabaseDatas } from './entities/ygodb/YGOProDatabaseDatas';
 import { YGOProDatabaseTexts } from './entities/ygodb/YGOProDatabaseTexts';
-import { getStringValueByMysticalNumber } from './CardInfo';
 import moment from 'moment';
 import { BattleHistory } from './entities/mycard/BattleHistory';
 import _ from 'underscore';
@@ -24,7 +23,6 @@ import { AppLogger } from './app.logger';
 import axios from 'axios';
 import { config } from './config';
 import qs from 'qs';
-import { EloUtility } from './EloUtility';
 import { Votes } from './entities/mycard/Votes';
 import { VoteResult } from './entities/mycard/VoteResult';
 import { promises as fs } from 'fs';
@@ -32,10 +30,11 @@ import { scheduleJob } from 'node-schedule';
 import { DeckInfo } from './entities/mycard/DeckInfo';
 import { DeckInfoHistory } from './entities/mycard/DeckInfoHistory';
 import { DeckDemo } from './entities/mycard/DeckDemo';
-import { Deck } from './entities/mycard/Deck';
 import { Ads } from './entities/mycard/Ads';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DeckInfoOrHistory } from './entities/mycard/DeckInfoOrHistory';
+import { EloService } from './elo/elo.service';
+import { CardInfoService } from './card-info/card-info.service';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -99,7 +98,7 @@ interface VoteOption {
   percentage: number;
 }
 
-interface DeckInfoCard {
+export interface DeckInfoCard {
   id: number;
   num: number;
   name?: string;
@@ -117,6 +116,8 @@ export class AppService {
     @InjectConnection('mycard')
     private mcdb: Connection,
     private log: AppLogger,
+    private eloService: EloService,
+    private cardInfoService: CardInfoService,
   ) {
     this.log.setContext('ygopro-arena-revive');
     this.chineseDirtyFilter = new Filter({
@@ -259,17 +260,17 @@ export class AppService {
 
       result.category = cardDatas.category;
 
-      result.type = getStringValueByMysticalNumber(
+      result.type = this.cardInfoService.getStringValueByMysticalNumber(
         lang,
         typeOffset,
         cardDatas.type,
       );
-      result.race = getStringValueByMysticalNumber(
+      result.race = this.cardInfoService.getStringValueByMysticalNumber(
         lang,
         raceOffset,
         cardDatas.race,
       );
-      result.attribute = getStringValueByMysticalNumber(
+      result.attribute = this.cardInfoService.getStringValueByMysticalNumber(
         lang,
         attrOffset,
         cardDatas.attribute,
@@ -630,8 +631,8 @@ export class AppService {
         }
       }
 
-      const ptResult = EloUtility.getEloScore(userA.pt, userB.pt, sa, sb);
-      const expResult = EloUtility.getExpScore(
+      const ptResult = this.eloService.getEloScore(userA.pt, userB.pt, sa, sb);
+      const expResult = this.eloService.getExpScore(
         userA.exp,
         userB.exp,
         userscoreA,
@@ -849,7 +850,7 @@ export class AppService {
         }
       });
     } else {
-      const expResult = EloUtility.getExpScore(
+      const expResult = this.eloService.getExpScore(
         userA.exp,
         userB.exp,
         userscoreA,
@@ -1239,7 +1240,11 @@ export class AppService {
       return;
     }
     item.name = card.texts.name;
-    item.type = getStringValueByMysticalNumber(lang, typeOffset, card.type);
+    item.type = this.cardInfoService.getStringValueByMysticalNumber(
+      lang,
+      typeOffset,
+      card.type,
+    );
   }
 
   private async fillCardInfoBatch(arr: DeckInfoCard[]) {
