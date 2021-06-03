@@ -17,7 +17,7 @@ export const athleticCheckConfig = {
     type: 'week',
     source: 'mycard-athletic',
   },
-  rankCount: 10,
+  rankCount: 20,
   ttl: 600,
 };
 

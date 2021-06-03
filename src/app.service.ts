@@ -859,8 +859,8 @@ export class AppService {
         this.athleticCheckerService.checkAthletic(deckA),
         this.athleticCheckerService.checkAthletic(deckB),
       ]);
-      this.log.error(deckA);
-      this.log.error(isAthleticA);
+      //this.log.error(deckA);
+      //this.log.error(isAthleticA);
       let athleticResultOk = true;
       for (const result of [isAthleticA, isAthleticB]) {
         if (!result.success) {
