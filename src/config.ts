@@ -10,6 +10,17 @@ export interface Config {
   enableSchedule: boolean;
 }
 
+export const athleticCheckConfig = {
+  rankURL: 'https://api.mycard.moe/ygopro/analytics/deck/type',
+  identifierURL: 'https://api.mycard.moe/ygopro/identifier/production',
+  athleticFetchParams: {
+    type: 'week',
+    source: 'mycard-athletic',
+  },
+  rankCount: 10,
+  ttl: 600,
+};
+
 export const config: Config = {
   accessKey: process.env.ARENA_ACCESS_KEY,
   host: process.env.PGHOST,

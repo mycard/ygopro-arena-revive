@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { HttpModule, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { config } from './config';
@@ -51,6 +51,7 @@ import { EloService } from './elo/elo.service';
 import { CardInfoService } from './card-info/card-info.service';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { AthleticCheckerService } from './athletic-checker/athletic-checker.service';
 
 const ygoproEntities = [YGOProDatabaseDatas, YGOProDatabaseTexts];
 const mycardEntities = [
@@ -98,6 +99,7 @@ const mycardEntities = [
 
 @Module({
   imports: [
+    HttpModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'upload'),
       serveRoot: '/api/download',
@@ -135,6 +137,7 @@ const mycardEntities = [
     HttpResponseService,
     EloService,
     CardInfoService,
+    AthleticCheckerService,
   ],
 })
 export class AppModule {}

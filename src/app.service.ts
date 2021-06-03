@@ -9,6 +9,7 @@ import {
   Like,
   MoreThanOrEqual,
   SelectQueryBuilder,
+  UpdateResult,
 } from 'typeorm';
 import { UserInfo } from './entities/mycard/UserInfo';
 import Filter from 'bad-words-chinese';
@@ -35,6 +36,7 @@ import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity
 import { DeckInfoOrHistory } from './entities/mycard/DeckInfoOrHistory';
 import { EloService } from './elo/elo.service';
 import { CardInfoService } from './card-info/card-info.service';
+import { AthleticCheckerService } from './athletic-checker/athletic-checker.service';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -118,6 +120,7 @@ export class AppService {
     private log: AppLogger,
     private eloService: EloService,
     private cardInfoService: CardInfoService,
+    private athleticCheckerService: AthleticCheckerService,
   ) {
     this.log.setContext('ygopro-arena-revive');
     this.chineseDirtyFilter = new Filter({
@@ -852,21 +855,53 @@ export class AppService {
         }
       });
     } else {
+      const [isAthleticA, isAthleticB] = await Promise.all([
+        this.athleticCheckerService.checkAthletic(deckA),
+        this.athleticCheckerService.checkAthletic(deckB),
+      ]);
+      this.log.error(deckA);
+      this.log.error(isAthleticA);
+      let athleticResultOk = true;
+      for (const result of [isAthleticA, isAthleticB]) {
+        if (!result.success) {
+          athleticResultOk = false;
+          this.log.error(`Failed to get athletic result: ${result.message}`);
+        }
+      }
       const expResult = this.eloService.getExpScore(
         userA.exp,
         userB.exp,
         userscoreA,
         userscoreB,
       );
+      let noRecord = false;
       if (userscoreA > userscoreB) {
-        paramA['entertain_win'] = 1;
-        paramB['entertain_lose'] = 1;
         winner = usernameA;
+        if (athleticResultOk && isAthleticA.athletic && !isAthleticB.athletic) {
+          this.log.log(
+            `Will not record this match because ${usernameA}'s ${deckA} is competitive while ${usernameB}'s ${deckB} isn't.`,
+          );
+          noRecord = true;
+          paramA['entertain_all'] = 0;
+          paramB['entertain_all'] = 0;
+        } else {
+          paramA['entertain_win'] = 1;
+          paramB['entertain_lose'] = 1;
+        }
       }
       if (userscoreA < userscoreB) {
-        paramA['entertain_lose'] = 1;
-        paramB['entertain_win'] = 1;
         winner = usernameB;
+        if (athleticResultOk && isAthleticB.athletic && !isAthleticA.athletic) {
+          this.log.log(
+            `Will not record this match because ${usernameB}'s ${deckB} is competitive while ${usernameA}'s ${deckA} isn't.`,
+          );
+          noRecord = true;
+          paramA['entertain_all'] = 0;
+          paramB['entertain_all'] = 0;
+        } else {
+          paramA['entertain_lose'] = 1;
+          paramB['entertain_win'] = 1;
+        }
       }
       if (userscoreA === userscoreB) {
         paramA['entertain_draw'] = 1;
@@ -895,8 +930,10 @@ export class AppService {
       await this.transaction(this.mcdb, async (db) => {
         const repo = db.getRepository(BattleHistory);
         try {
+          if (!noRecord) {
+            await repo.save(battleHistory);
+          }
           await Promise.all([
-            repo.save(battleHistory),
             db
               .createQueryBuilder()
               .update(UserInfo)
@@ -1547,18 +1584,18 @@ export class AppService {
       .from(UserInfo, 'tg')
       .addFrom(UserInfo, 'rk')
       .where('tg.username = :username', { username })
-      .andWhere('rk.pt >= tg.pt')
+      .andWhere('rk.pt > tg.pt')
       .getRawOne();
-    resultData.arena_rank = parseInt(arenaRank);
+    resultData.arena_rank = parseInt(arenaRank) + 1;
     const { expRank } = await this.mcdb.manager
       .createQueryBuilder()
       .select('count(*)', 'expRank')
       .from(UserInfo, 'tg')
       .addFrom(UserInfo, 'rk')
       .where('tg.username = :username', { username })
-      .andWhere('rk.exp >= tg.exp')
+      .andWhere('rk.exp > tg.exp')
       .getRawOne();
-    resultData.exp_rank = parseInt(expRank);
+    resultData.exp_rank = parseInt(expRank) + 1;
     return resultData;
   }
   async updateAds(body: any) {
