@@ -4,6 +4,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  HttpCode,
   HttpException,
   InternalServerErrorException,
   NotFoundException,
@@ -39,6 +40,7 @@ export class AppController {
   ) {}
 
   @Post('score')
+  @HttpCode(200)
   async postScore(@Body() body: any, @Body('accesskey') accessKey) {
     if (accessKey !== config.accessKey) {
       throw new ForbiddenException({
