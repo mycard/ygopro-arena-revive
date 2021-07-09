@@ -30,6 +30,7 @@ import cryptoRandomString from 'crypto-random-string';
 import { join } from 'path';
 import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { FileUploadDto } from './dto/FileUploadDto';
+import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
 
 @Controller('api')
 @ApiTags('arena')
@@ -264,5 +265,10 @@ export class AppController {
   @Get('firstwin')
   async getFirstWinActivity(@Query('username') username: string) {
     return await this.appService.getFirstWinActivity(username);
+  }
+
+  @Get('homepageCount')
+  async getLastMonthBattleCount(): Promise<HomePageMatchCountDto> {
+    return this.appService.getLastMonthBattleCount();
   }
 }

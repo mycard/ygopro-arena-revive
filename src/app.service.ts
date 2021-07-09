@@ -37,6 +37,7 @@ import { DeckInfoOrHistory } from './entities/mycard/DeckInfoOrHistory';
 import { EloService } from './elo/elo.service';
 import { CardInfoService } from './card-info/card-info.service';
 import { AthleticCheckerService } from './athletic-checker/athletic-checker.service';
+import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -1760,5 +1761,20 @@ export class AppService {
         .getCount()
     ).toString();
     return activity;
+  }
+
+  async getLastMonthBattleCount() {
+    const lastMonth = moment().subtract(1, 'month');
+    const fromTime = moment(lastMonth);
+    fromTime.set({ day: 1, hour: 0, minute: 0, second: 0 });
+    const toTime = moment(fromTime).add(1, 'month');
+    //this.log.log(`${fromTime} - ${toTime}`);
+    const count = await this.mcdb.getRepository(BattleHistory).count({
+      where: {
+        end_time: MoreThanOrEqual(fromTime.toDate()),
+        start_time: LessThanOrEqual(toTime.toDate()),
+      },
+    });
+    return new HomePageMatchCountDto(count);
   }
 }
