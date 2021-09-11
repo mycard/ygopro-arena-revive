@@ -1766,7 +1766,7 @@ export class AppService {
   async getLastMonthBattleCount() {
     const lastMonth = moment().subtract(1, 'month');
     const fromTime = moment(lastMonth);
-    fromTime.set({ day: 1, hour: 0, minute: 0, second: 0 });
+    fromTime.set({ date: 1, hour: 0, minute: 0, second: 0 });
     const toTime = moment(fromTime).add(1, 'month');
     //this.log.log(`${fromTime} - ${toTime}`);
     const count = await this.mcdb.getRepository(BattleHistory).count({
