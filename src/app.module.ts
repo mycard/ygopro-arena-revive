@@ -119,7 +119,6 @@ const mycardEntities = [
       database: './ygopro-database/locales/en-US/cards.cdb',
     }),
     TypeOrmModule.forRoot({
-      synchronize: false,
       type: 'postgres',
       name: 'mycard',
       entities: mycardEntities,
@@ -128,6 +127,7 @@ const mycardEntities = [
       host: config.host,
       port: config.port,
       database: config.database,
+      synchronize: false,
     }),
   ],
   controllers: [AppController],
