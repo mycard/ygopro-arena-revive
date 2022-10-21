@@ -1792,8 +1792,14 @@ export class AppService {
         where: { username: user.username },
       });
       if (!userInfo || userInfo.exp < config.novelaiCost) {
+        this.log.log(
+          `${user.username} has no enough exp to use novelai: ${userInfo.exp}`,
+        );
         throw new HttpException(new CodeResponseDto(402), 402);
       }
+      this.log.log(
+        `${user.username} paid ${config.novelaiCost} exp to use novelai.`,
+      );
       await edb
         .getRepository(UserInfo)
         .decrement({ username: user.username }, 'exp', config.novelaiCost);
