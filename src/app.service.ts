@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectEntityManager } from '@nestjs/typeorm';
 import {
   Brackets,
@@ -38,6 +38,8 @@ import { EloService } from './elo/elo.service';
 import { CardInfoService } from './card-info/card-info.service';
 import { AthleticCheckerService } from './athletic-checker/athletic-checker.service';
 import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
+import { AccountService } from './account/account.service';
+import { CodeResponseDto } from './dto/CodeResponse.dto';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -122,6 +124,7 @@ export class AppService {
     private eloService: EloService,
     private cardInfoService: CardInfoService,
     private athleticCheckerService: AthleticCheckerService,
+    private accountService: AccountService,
   ) {
     this.log.setContext('ygopro-arena-revive');
     this.chineseDirtyFilter = new Filter({
@@ -1776,5 +1779,25 @@ export class AppService {
       },
     });
     return new HomePageMatchCountDto(count);
+  }
+
+  async novelaiAuth(token: string) {
+    const user = await this.accountService.checkToken(token);
+    if (user.admin) {
+      return new CodeResponseDto(200);
+    }
+    return this.mcdb.transaction(async (edb) => {
+      const userInfo = await edb.getRepository(UserInfo).findOne({
+        select: ['username', 'exp'],
+        where: { username: user.username },
+      });
+      if (!userInfo || userInfo.exp < config.novelaiCost) {
+        throw new HttpException(new CodeResponseDto(402), 402);
+      }
+      await edb
+        .getRepository(UserInfo)
+        .decrement({ username: user.username }, 'exp', config.novelaiCost);
+      return new CodeResponseDto(200);
+    });
   }
 }

@@ -8,6 +8,8 @@ export interface Config {
   deckIdentifierPath: string;
   analyzerHost: string;
   enableSchedule: boolean;
+  accountsUrl: string;
+  novelaiCost: number;
 }
 
 export const athleticCheckConfig = {
@@ -31,4 +33,9 @@ export const config: Config = {
   deckIdentifierPath: process.env.DECK_IDENTIFIER_PATH,
   analyzerHost: process.env.ANALYZER_HOST,
   enableSchedule: !process.env.NO_SCHEDULE,
+  accountsUrl:
+    process.env.ACCOUNTS_URL || 'https://sapi.moecube.com:444/accounts',
+  novelaiCost: process.env.NOVELAI_COST
+    ? parseInt(process.env.NOVELAI_COST)
+    : 3,
 };

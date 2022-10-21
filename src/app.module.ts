@@ -52,6 +52,7 @@ import { CardInfoService } from './card-info/card-info.service';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AthleticCheckerService } from './athletic-checker/athletic-checker.service';
+import { AccountService } from './account/account.service';
 
 const ygoproEntities = [YGOProDatabaseDatas, YGOProDatabaseTexts];
 const mycardEntities = [
@@ -138,6 +139,7 @@ const mycardEntities = [
     EloService,
     CardInfoService,
     AthleticCheckerService,
+    AccountService,
   ],
 })
 export class AppModule {}

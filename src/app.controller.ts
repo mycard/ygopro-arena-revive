@@ -4,31 +4,33 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Headers,
   HttpCode,
-  HttpException,
   InternalServerErrorException,
   NotFoundException,
   Param,
   ParseIntPipe,
   Post,
   Query,
-  Req,
-  Res,
   UploadedFile,
-  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import express from 'express';
 import { AppService } from './app.service';
-import { UserInfo } from './entities/mycard/UserInfo';
 import { config } from './config';
-import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { HttpResponseService } from './http-response/http-response.service';
 import { CodeResponseDto } from './dto/CodeResponse.dto';
 import multer from 'multer';
 import cryptoRandomString from 'crypto-random-string';
 import { join } from 'path';
-import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { FileUploadDto } from './dto/FileUploadDto';
 import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
 
@@ -270,5 +272,13 @@ export class AppController {
   @Get('homepageCount')
   async getLastMonthBattleCount(): Promise<HomePageMatchCountDto> {
     return this.appService.getLastMonthBattleCount();
+  }
+
+  @Get('novelai-auth')
+  @ApiOperation({ summary: 'novelai 用认证' })
+  @ApiHeader({ name: 'Authorization' })
+  @ApiOkResponse({ type: CodeResponseDto })
+  async novelaiAuth(@Headers('Authorization') token: string) {
+    return this.appService.novelaiAuth(token);
   }
 }
