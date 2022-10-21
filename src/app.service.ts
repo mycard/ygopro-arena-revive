@@ -1791,7 +1791,13 @@ export class AppService {
         select: ['username', 'exp'],
         where: { username: user.username },
       });
-      if (!userInfo || userInfo.exp < config.novelaiCost) {
+      if (!userInfo) {
+        this.log.log(
+          `${user.username} has no duel records, cannot use novelai.`,
+        );
+        throw new HttpException(new CodeResponseDto(402), 402);
+      }
+      if (userInfo.exp < config.novelaiCost) {
         this.log.log(
           `${user.username} has no enough exp to use novelai: ${userInfo.exp}`,
         );
