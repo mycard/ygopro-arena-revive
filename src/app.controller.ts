@@ -14,6 +14,7 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AppService } from './app.service';
 import { config } from './config';
@@ -33,6 +34,7 @@ import {
 } from '@nestjs/swagger';
 import { FileUploadDto } from './dto/FileUploadDto';
 import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
+import { PayExpDto } from './dto/PayExp.dto';
 
 @Controller('api')
 @ApiTags('arena')
@@ -274,11 +276,20 @@ export class AppController {
     return this.appService.getLastMonthBattleCount();
   }
 
-  @Get('novelai-auth')
-  @ApiOperation({ summary: 'novelai 用认证' })
+  @Get('pay-exp')
+  @ApiOperation({ summary: '支付 exp' })
   @ApiHeader({ name: 'Authorization' })
   @ApiOkResponse({ type: CodeResponseDto })
-  async novelaiAuth(@Headers('Authorization') token: string) {
-    return this.appService.novelaiAuth(token);
+  async payExp(
+    @Headers('Authorization') token: string,
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
+    )
+    query: PayExpDto,
+  ) {
+    return this.appService.payExp(token, query);
   }
 }

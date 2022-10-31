@@ -5,8 +5,11 @@ export class CodeResponseDto {
   code: number;
   @ApiProperty({ description: '是否成功' })
   success: boolean;
-  constructor(code: number) {
+  @ApiProperty({ description: '错误信息' })
+  message?: string;
+  constructor(code: number, message?: string) {
     this.success = code < 400;
     this.code = code;
+    this.message = message;
   }
 }

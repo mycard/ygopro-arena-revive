@@ -40,6 +40,7 @@ import { AthleticCheckerService } from './athletic-checker/athletic-checker.serv
 import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
 import { AccountService } from './account/account.service';
 import { CodeResponseDto } from './dto/CodeResponse.dto';
+import { PayExpDto } from './dto/PayExp.dto';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -1781,7 +1782,7 @@ export class AppService {
     return new HomePageMatchCountDto(count);
   }
 
-  async novelaiAuth(token: string) {
+  async payExp(token: string, dto: PayExpDto) {
     const user = await this.accountService.checkToken(token);
     if (user.admin) {
       return new CodeResponseDto(200);
@@ -1793,22 +1794,22 @@ export class AppService {
       });
       if (!userInfo) {
         this.log.log(
-          `${user.username} has no duel records, cannot use novelai.`,
+          `${user.username} has no duel records, cannot use ${dto.getName()}.`,
         );
         throw new HttpException(new CodeResponseDto(402), 402);
       }
-      if (userInfo.exp < config.novelaiCost) {
+      if (userInfo.exp < dto.cost) {
         this.log.log(
           `${user.username} has no enough exp to use novelai: ${userInfo.exp}`,
         );
         throw new HttpException(new CodeResponseDto(402), 402);
       }
       this.log.log(
-        `${user.username} paid ${config.novelaiCost} exp to use novelai.`,
+        `${user.username} paid ${dto.cost} exp to use ${dto.getName()}.`,
       );
       await edb
         .getRepository(UserInfo)
-        .decrement({ username: user.username }, 'exp', config.novelaiCost);
+        .decrement({ username: user.username }, 'exp', dto.cost);
       return new CodeResponseDto(200);
     });
   }
