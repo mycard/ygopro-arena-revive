@@ -1796,13 +1796,19 @@ export class AppService {
         this.log.log(
           `${user.username} has no duel records, cannot use ${dto.getName()}.`,
         );
-        throw new HttpException(new CodeResponseDto(402), 402);
+        throw new HttpException(
+          new CodeResponseDto(402, 'No duel records.'),
+          402,
+        );
       }
       if (userInfo.exp < dto.cost) {
         this.log.log(
           `${user.username} has no enough exp to use novelai: ${userInfo.exp}`,
         );
-        throw new HttpException(new CodeResponseDto(402), 402);
+        throw new HttpException(
+          new CodeResponseDto(402, 'Not enough exp.'),
+          402,
+        );
       }
       this.log.log(
         `${user.username} paid ${dto.cost} exp to use ${dto.getName()}.`,
