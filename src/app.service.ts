@@ -152,10 +152,11 @@ export class AppService {
       .subtract(1, 'day')
       .format('YYYY-MM-DD 23:59:59');
     const base = 1000;
+    const reset = [1, 4, 7, 10].indexOf(moment().month() + 1) >= 0;
     try {
       await this.mcdb.query(
         'select monthly_user_historical_record($1::text, $2, $3::boolean, true)',
-        [season, base, false],
+        [season, base, reset],
       );
       await this.mcdb.query('select collect_win_lose_rate($1, $2)', [
         lower_limit,
