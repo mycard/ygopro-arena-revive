@@ -41,6 +41,7 @@ import { HomePageMatchCountDto } from './dto/HomePageMatchCount.dto';
 import { AccountService } from './account/account.service';
 import { CodeResponseDto } from './dto/CodeResponse.dto';
 import { PayExpDto } from './dto/PayExp.dto';
+import { UserHistoricalRecord } from './entities/mycard/UserHistoricalRecord';
 
 const attrOffset = 1010;
 const raceOffset = 1020;
@@ -1527,6 +1528,19 @@ export class AppService {
       history.deckb = null;
     }
     return ret;
+  }
+  async getScoreHistory(query: any): Promise<UserHistoricalRecord> {
+    const username: string = query.username;
+    const season: string = query.season;
+    const q = this.mcdb
+      .getRepository(UserHistoricalRecord)
+      .createQueryBuilder()
+      .where('username = :username and season = :season', {
+        username: username,
+        season: season,
+      });
+    const result = await q.getOne();
+    return result;
   }
   async getUser(username: string) {
     const resultData = {

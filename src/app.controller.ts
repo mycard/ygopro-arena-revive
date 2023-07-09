@@ -230,6 +230,10 @@ export class AppController {
   async getBattleHistory(@Query() query: any) {
     return await this.appService.getBattleHistory(query);
   }
+  @Get('historyScore')
+  async getScoreHistory(@Query() query: any) {
+    return await this.appService.getScoreHistory(query);
+  }
   @Get('user')
   async getUser(@Query('username') username: string) {
     return await this.appService.getUser(username);
